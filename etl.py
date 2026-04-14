@@ -1,5 +1,5 @@
 """
-ETL: Oracle (Receitas BO/GDF) → JSON → GitHub
+ETL: Oracle (BO/GDF) → JSON → GitHub
 Extrai dados via oracledb e salva arquivos JSON em data/
 para consumo pelo dashboard hospedado no GitHub Pages.
 """
@@ -12,19 +12,18 @@ from decimal import Decimal
 from pathlib import Path
 from dotenv import load_dotenv
 
-# ─── Carrega variáveis de ambiente ────────────────────────────────────────────
+# ── Variáveis de ambiente ──────────────────────────────────────────────────
 load_dotenv()
 
-DB_USER       = os.getenv("DB_USER")
-DB_PASSWORD   = os.getenv("DB_PASSWORD")
-DB_DSN        = os.getenv("DB_DSN", "10.69.1.118:1521/oraprd06")
-CLIENT_PATH   = os.getenv("ORACLE_CLIENT_PATH", "").strip()
-
+DB_USER     = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DSN      = os.getenv("DB_DSN", "10.69.1.118:1521/oraprd06")
+CLIENT_PATH = os.getenv("ORACLE_CLIENT_PATH", "").strip()
 DB_MIN  = int(os.getenv("DB_MIN_CONNECTIONS", 1))
 DB_MAX  = int(os.getenv("DB_MAX_CONNECTIONS", 5))
 DB_INC  = int(os.getenv("DB_INCREMENT_CONNECTIONS", 1))
 
-# ─── Logging ──────────────────────────────────────────────────────────────────
+# ── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -32,25 +31,31 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ─── Diretório de saída ───────────────────────────────────────────────────────
-OUTPUT_DIR = Path(__file__).parent / "data"
+# ── Caminhos ───────────────────────────────────────────────────────────────
+BASE_DIR   = Path(__file__).parent
+OUTPUT_DIR = BASE_DIR / "data"
 OUTPUT_DIR.mkdir(exist_ok=True)
+BO_DIR     = BASE_DIR / "balanco_orcamentario"
+
+# Schema Oracle dinâmico: mil2026, mil2027, ...
+SCHEMA_ANO = f"mil{datetime.now().year}"
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-#  CONFIGURE AQUI — adicione ou edite as queries dos seus projetos
+# ──────────────────────────────────────────────────────────────────────────
+#  QUERIES
 #
-#  Cada item:
-#    "file"  → nome do arquivo JSON gerado dentro de data/
-#    "query" → SELECT executado no Oracle
-# ──────────────────────────────────────────────────────────────────────────────
+#  Cada item aceita:
+#    "file"     → nome do arquivo JSON gerado em data/
+#    "query"    → SQL inline (string)
+#    "sql_file" → nome do arquivo .sql dentro de balanco_orcamentario/
+#                 (suporte ao placeholder {SCHEMA_ANO})
+#
+#  Use "query" para SQLs simples e "sql_file" para SQLs complexos
+#  mantidos em arquivos separados.
+# ──────────────────────────────────────────────────────────────────────────
 QUERIES = [
     {
-        # Saldo contábil por função e subfunção — MIL2026
-        # Fonte: MIL2026.SALDOCONTABIL + FUNCAO + SUBFUNCAO
-        # Filtro: contas 52211, 52212, 52215, 52219, 62213 (5 dígitos)
-        #         e contas 6221303, 6221304, 6221307 (7 dígitos)
-        #         meses 1 e 2
+        # Saldo contábil por função e subfunção
         "file": "saldo_funcao_subfuncao.json",
         "query": """
             SELECT
@@ -69,14 +74,26 @@ QUERIES = [
             ORDER BY FU.COFUNCAO, SU.COSUBFUNCAO
         """,
     },
-    # Adicione mais queries aqui seguindo o mesmo padrão:
-    # {
-    #     "file": "outro_dado.json",
-    #     "query": "SELECT ... FROM sua_tabela",
-    # },
+    {
+        # Receita Orçamentária (Balanço Orçamentário)
+        "file": "receita.json",
+        "sql_file": "RECEITA.sql",
+    },
+    {
+        # Despesa Orçamentária (Balanço Orçamentário)
+        "file": "despesa.json",
+        "sql_file": "DESPESA.sql",
+    },
+    {
+        # Créditos Adicionais (complementa a despesa no dashboard)
+        "file": "creditos_adicionais.json",
+        "sql_file": "CREDITOS_ADICIONAIS.sql",
+    },
+    # Adicione mais queries aqui seguindo o mesmo padrão.
 ]
-# ──────────────────────────────────────────────────────────────────────────────
 
+
+# ── Helpers ────────────────────────────────────────────────────────────────
 
 def serialize(value):
     """Converte tipos Oracle não serializáveis em JSON."""
@@ -98,7 +115,7 @@ def fetch(cursor, query: str) -> list[dict]:
 
 
 def save_json(filename: str, data: list[dict]):
-    """Salva dados como JSON com metadados."""
+    """Salva dados como JSON com metadados de atualização."""
     payload = {
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "total": len(data),
@@ -109,11 +126,31 @@ def save_json(filename: str, data: list[dict]):
     log.info(f"  ✓ {filename} — {len(data)} registros salvos")
 
 
+def read_sql(filename: str) -> str:
+    """
+    Lê arquivo .sql de balanco_orcamentario/,
+    remove comentários de linha (--) e substitui {SCHEMA_ANO}.
+    """
+    path = BO_DIR / filename
+    sql = path.read_text(encoding="utf-8")
+    lines = [line for line in sql.splitlines() if not line.strip().startswith("--")]
+    return "\n".join(lines).replace("{SCHEMA_ANO}", SCHEMA_ANO).strip()
+
+
+def resolve_query(item: dict) -> str:
+    """Retorna o SQL do item, seja inline ou lido de arquivo."""
+    if "query" in item:
+        return item["query"]
+    return read_sql(item["sql_file"])
+
+
+# ── Oracle ─────────────────────────────────────────────────────────────────
+
 def init_oracle():
     """
     Inicializa oracledb.
-    - Usa thick mode se ORACLE_CLIENT_PATH estiver preenchido no .env
-    - Caso contrário usa thin mode (padrão, funciona com Oracle 12.1+)
+    - Thick mode se ORACLE_CLIENT_PATH estiver definido no .env
+    - Thin mode caso contrário (Oracle 12.1+, sem client instalado)
     """
     import oracledb
 
@@ -126,6 +163,8 @@ def init_oracle():
     return oracledb
 
 
+# ── Pipeline principal ─────────────────────────────────────────────────────
+
 def run():
     try:
         oracledb = init_oracle()
@@ -135,7 +174,7 @@ def run():
     if not DB_USER or not DB_PASSWORD:
         raise ValueError("DB_USER e DB_PASSWORD precisam estar definidos no .env")
 
-    log.info(f"Conectando ao Oracle → {DB_DSN}")
+    log.info(f"Conectando ao Oracle → {DB_DSN}  [schema: {SCHEMA_ANO}]")
 
     pool = oracledb.create_pool(
         user=DB_USER,
@@ -152,7 +191,7 @@ def run():
             for item in QUERIES:
                 log.info(f"Extraindo → {item['file']}")
                 try:
-                    data = fetch(cur, item["query"])
+                    data = fetch(cur, resolve_query(item))
                     save_json(item["file"], data)
                 except Exception as e:
                     log.error(f"  ✗ Erro em {item['file']}: {e}")

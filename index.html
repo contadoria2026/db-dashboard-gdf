@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Fiscal — GDF</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <title>Dashboards Fiscais — GDF</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12,281 +11,167 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #f5f6fa;
       color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     header {
       background: #1a3a5c;
       color: #fff;
-      padding: 20px 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
+      padding: 28px 32px;
+      text-align: center;
     }
-    header h1 { font-size: 1.25rem; font-weight: 600; }
-    header small { font-size: 0.8rem; opacity: 0.75; }
+    header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+    header p  { font-size: 0.9rem; opacity: 0.7; }
 
-    .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
-
-    /* ── Filtro de mês ── */
-    .filtro {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-    .filtro label { font-size: 0.9rem; font-weight: 500; color: #555; }
-    .filtro select {
-      padding: 6px 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      background: #fff;
-      cursor: pointer;
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      flex: 1;
     }
 
-    /* ── Cards ── */
-    .cards {
+    .secao-titulo {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 16px;
+    }
+
+    .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+      margin-bottom: 48px;
     }
+
     .card {
       background: #fff;
-      border-radius: 10px;
-      padding: 22px 24px;
+      border-radius: 12px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-      border-left: 4px solid #ccc;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, transform 0.2s;
+      display: flex;
+      flex-direction: column;
     }
-    .card.credito  { border-color: #2e7d32; }
-    .card.debito   { border-color: #c62828; }
-    .card.saldo    { border-color: #1565c0; }
-    .card.registros { border-color: #6a1e9e; }
+    .card:hover {
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      transform: translateY(-2px);
+    }
 
-    .card-label {
-      font-size: 0.78rem;
+    .card-topo {
+      height: 6px;
+    }
+    .card-topo.azul    { background: #1565c0; }
+    .card-topo.verde   { background: #2e7d32; }
+    .card-topo.roxo    { background: #6a1e9e; }
+    .card-topo.laranja { background: #e65100; }
+    .card-topo.cinza   { background: #546e7a; }
+
+    .card-corpo {
+      padding: 22px 24px;
+      flex: 1;
+    }
+    .card-nome {
+      font-size: 1rem;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #888;
+      color: #222;
       margin-bottom: 8px;
     }
-    .card-value {
-      font-size: 1.55rem;
+    .card-desc {
+      font-size: 0.84rem;
+      color: #777;
+      line-height: 1.5;
+    }
+    .card-rodape {
+      padding: 12px 24px;
+      background: #f9f9f9;
+      border-top: 1px solid #eee;
+      font-size: 0.78rem;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Card de placeholder (em breve) ── */
+    .card.em-breve {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
       font-weight: 700;
-      color: #222;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+      background: #e3f2fd;
+      color: #1565c0;
     }
-    .card.credito  .card-value { color: #2e7d32; }
-    .card.debito   .card-value { color: #c62828; }
-    .card.saldo    .card-value { color: #1565c0; }
 
-    /* ── Gráfico ── */
-    .chart-box {
-      background: #fff;
-      border-radius: 10px;
-      padding: 24px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
-    .chart-box h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 20px;
-    }
-    .chart-wrap { position: relative; height: 420px; }
-
-    /* ── Loading / Erro ── */
-    .status {
-      text-align: center;
-      padding: 60px 20px;
-      color: #888;
-      font-size: 1rem;
-    }
-    .status.erro { color: #c62828; }
-
-    /* ── Rodapé ── */
     footer {
       text-align: center;
       padding: 24px;
       font-size: 0.78rem;
-      color: #aaa;
+      color: #bbb;
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Dashboard Fiscal — Saldo Contábil por Função/Subfunção</h1>
-  <small id="atualizado">Carregando…</small>
+  <h1>Dashboards Fiscais — GDF</h1>
+  <p>Dados extraídos automaticamente do Oracle via GitHub Actions</p>
 </header>
 
 <div class="container">
 
-  <div id="status" class="status">⏳ Carregando dados…</div>
+  <p class="secao-titulo">Relatórios disponíveis</p>
 
-  <div id="conteudo" style="display:none">
+  <div class="grid">
 
-    <div class="filtro">
-      <label for="filtroMes">Filtrar por mês:</label>
-      <select id="filtroMes">
-        <option value="todos">Todos</option>
-        <option value="1">Janeiro (Mês 1)</option>
-        <option value="2">Fevereiro (Mês 2)</option>
-      </select>
-    </div>
+    <!-- Dashboard 1: Função/Subfunção -->
+    <a href="./funcao-subfuncao/" class="card">
+      <div class="card-topo azul"></div>
+      <div class="card-corpo">
+        <div class="card-nome">Saldo por Função/Subfunção</div>
+        <div class="card-desc">
+          Créditos e débitos contábeis agrupados por função e subfunção orçamentária.
+          Filtro por mês com gráfico comparativo.
+        </div>
+      </div>
+      <div class="card-rodape">
+        📊 saldo_funcao_subfuncao.json
+      </div>
+    </a>
 
-    <div class="cards">
-      <div class="card credito">
-        <div class="card-label">Total Créditos</div>
-        <div class="card-value" id="totalCredito">—</div>
+    <!-- Dashboard 2: Balanço Orçamentário -->
+    <a href="./balanco_orcamentario/" class="card">
+      <div class="card-topo verde"></div>
+      <div class="card-corpo">
+        <div class="card-nome">Balanço Orçamentário</div>
+        <div class="card-desc">
+          Receita e despesa orçamentária: previsão, arrecadação, empenho,
+          liquidação e pagamento por categoria, origem e GND.
+        </div>
       </div>
-      <div class="card debito">
-        <div class="card-label">Total Débitos</div>
-        <div class="card-value" id="totalDebito">—</div>
+      <div class="card-rodape">
+        📊 receita.json · despesa.json · creditos_adicionais.json
       </div>
-      <div class="card saldo">
-        <div class="card-label">Saldo (Créd. − Déb.)</div>
-        <div class="card-value" id="totalSaldo">—</div>
-      </div>
-      <div class="card registros">
-        <div class="card-label">Registros</div>
-        <div class="card-value" id="totalRegistros">—</div>
-      </div>
-    </div>
-
-    <div class="chart-box">
-      <h2>Créditos e Débitos por Função</h2>
-      <div class="chart-wrap">
-        <canvas id="graficoFuncao"></canvas>
-      </div>
-    </div>
+    </a>
 
   </div>
+
 </div>
 
-<footer>Dados extraídos automaticamente via ETL Oracle → GitHub Actions · GDF</footer>
-
-<script>
-  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtN = v => v.toLocaleString('pt-BR');
-
-  let dadosGlobais = [];
-  let grafico = null;
-
-  // Lê o JSON gerado pelo ETL
-  fetch('./data/saldo_funcao_subfuncao.json')
-    .then(r => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
-    })
-    .then(json => {
-      // Exibe data de atualização
-      const dt = new Date(json.atualizado_em);
-      document.getElementById('atualizado').textContent =
-        'Atualizado em ' + dt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-
-      dadosGlobais = json.dados;
-
-      document.getElementById('status').style.display = 'none';
-      document.getElementById('conteudo').style.display = 'block';
-
-      renderizar('todos');
-
-      document.getElementById('filtroMes').addEventListener('change', e => {
-        renderizar(e.target.value);
-      });
-    })
-    .catch(err => {
-      const el = document.getElementById('status');
-      el.textContent = '❌ Erro ao carregar dados: ' + err.message;
-      el.classList.add('erro');
-    });
-
-  function renderizar(mesFiltro) {
-    const dados = mesFiltro === 'todos'
-      ? dadosGlobais
-      : dadosGlobais.filter(d => String(d.inmes) === mesFiltro);
-
-    // Cards
-    const totCred = dados.reduce((s, d) => s + (d.vacredito || 0), 0);
-    const totDeb  = dados.reduce((s, d) => s + (d.vadebito  || 0), 0);
-    document.getElementById('totalCredito').textContent  = fmt(totCred);
-    document.getElementById('totalDebito').textContent   = fmt(totDeb);
-    document.getElementById('totalSaldo').textContent    = fmt(totCred - totDeb);
-    document.getElementById('totalRegistros').textContent = fmtN(dados.length);
-
-    // Agrega por função
-    const mapa = {};
-    dados.forEach(d => {
-      const fn = (d.nofuncao || 'SEM FUNÇÃO').trim();
-      if (!mapa[fn]) mapa[fn] = { cred: 0, deb: 0 };
-      mapa[fn].cred += d.vacredito || 0;
-      mapa[fn].deb  += d.vadebito  || 0;
-    });
-
-    // Ordena por maior crédito
-    const funcoes = Object.keys(mapa).sort((a, b) => mapa[b].cred - mapa[a].cred);
-    const creditos = funcoes.map(f => mapa[f].cred);
-    const debitos  = funcoes.map(f => mapa[f].deb);
-
-    // Rótulos abreviados para o gráfico
-    const labels = funcoes.map(f => f.length > 22 ? f.slice(0, 20) + '…' : f);
-
-    if (grafico) grafico.destroy();
-
-    grafico = new Chart(document.getElementById('graficoFuncao'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Créditos',
-            data: creditos,
-            backgroundColor: 'rgba(46, 125, 50, 0.75)',
-            borderColor: '#2e7d32',
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-          {
-            label: 'Débitos',
-            data: debitos,
-            backgroundColor: 'rgba(198, 40, 40, 0.65)',
-            borderColor: '#c62828',
-            borderWidth: 1,
-            borderRadius: 4,
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: {
-            callbacks: {
-              label: ctx => ' ' + fmt(ctx.raw)
-            }
-          }
-        },
-        scales: {
-          x: {
-            ticks: { font: { size: 11 } },
-            grid: { display: false }
-          },
-          y: {
-            ticks: {
-              callback: v => 'R$ ' + (v / 1e6).toFixed(1) + 'M',
-              font: { size: 11 }
-            },
-            grid: { color: '#eee' }
-          }
-        }
-      }
-    });
-  }
-</script>
+<footer>GDF · Atualização automática diária às 06h (horário de Brasília)</footer>
 
 </body>
 </html>
