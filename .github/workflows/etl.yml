@@ -2,7 +2,7 @@ name: ETL Oracle - JSON
 
 on:
   schedule:
-    - cron: "*/3 * * * *"
+    - cron: "0 9 * * *"
   workflow_dispatch:
 
 permissions:
