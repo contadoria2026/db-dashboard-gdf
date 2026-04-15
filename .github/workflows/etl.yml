@@ -1,19 +1,19 @@
-name: ETL Oracle → JSON
+name: ETL Oracle - JSON
 
 on:
   schedule:
-    - cron: "0 9 * * *"   # Todo dia às 09:00 UTC = 06:00 Brasília
-  workflow_dispatch:        # Permite rodar manualmente pelo GitHub
+    - cron: "0 9 * * *"
+  workflow_dispatch:
 
 jobs:
   etl:
-    runs-on: self-hosted    # Executa na máquina local com acesso ao Oracle
+    runs-on: self-hosted
 
     steps:
-      - name: Checkout do repositório
+      - name: Checkout do repositorio
         uses: actions/checkout@v4
 
-      - name: Instalar dependências Python
+      - name: Instalar dependencias Python
         run: pip install -r requirements.txt
 
       - name: Rodar ETL
@@ -32,20 +32,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Write-Host "=== Arquivos em data/ ==="
+          Write-Host "Arquivos em data/"
           Get-ChildItem data\ -ErrorAction SilentlyContinue | Format-Table Name, Length
 
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:$env:GITHUB_TOKEN@github.com/contadoria2026/db-dashboard-gdf.git"
 
           git add data/saldo_funcao_subfuncao.json data/receita.json
           Write-Host "git add codigo de saida: $LASTEXITCODE"
 
-          Write-Host "=== git status ==="
+          Write-Host "git status:"
           git status
 
-          Write-Host "=== git log ultimos commits ==="
+          Write-Host "git log:"
           git log --oneline -3
 
           git diff --staged --quiet
@@ -56,5 +56,5 @@ jobs:
             git push 2>&1
             Write-Host "git push codigo de saida: $LASTEXITCODE"
           } else {
-            Write-Host "Sem alteracoes staged — nada para commitar."
+            Write-Host "Sem alteracoes para commitar."
           }
