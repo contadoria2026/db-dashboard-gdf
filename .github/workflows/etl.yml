@@ -32,8 +32,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $ErrorActionPreference = 'Continue'
-
           Write-Host "=== Arquivos em data/ ==="
           Get-ChildItem data\ -ErrorAction SilentlyContinue | Format-Table Name, Length
 
@@ -42,7 +40,7 @@ jobs:
           git remote set-url origin "https://x-access-token:$env:GITHUB_TOKEN@github.com/contadoria2026/db-dashboard-gdf.git"
 
           git add data/saldo_funcao_subfuncao.json data/receita.json
-          Write-Host "git add saiu com codigo: $LASTEXITCODE"
+          Write-Host "git add codigo de saida: $LASTEXITCODE"
 
           Write-Host "=== git status ==="
           git status
@@ -54,9 +52,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             $date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm UTC')
             git commit -m "chore: atualiza dados ETL $date"
-            Write-Host "git commit saiu com codigo: $LASTEXITCODE"
+            Write-Host "git commit codigo de saida: $LASTEXITCODE"
             git push 2>&1
-            Write-Host "git push saiu com codigo: $LASTEXITCODE"
+            Write-Host "git push codigo de saida: $LASTEXITCODE"
           } else {
             Write-Host "Sem alteracoes staged — nada para commitar."
           }
