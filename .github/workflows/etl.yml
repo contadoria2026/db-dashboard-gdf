@@ -32,24 +32,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Write-Host "=== Arquivos gerados em data/ ==="
-          Get-ChildItem data\*.json -ErrorAction SilentlyContinue | Format-Table Name, Length
+          $ErrorActionPreference = 'Continue'
+
+          Write-Host "=== Arquivos em data/ ==="
+          Get-ChildItem data\ -ErrorAction SilentlyContinue | Format-Table Name, Length
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:$env:GITHUB_TOKEN@github.com/contadoria2026/db-dashboard-gdf.git"
 
           git add data/saldo_funcao_subfuncao.json data/receita.json
+          Write-Host "git add saiu com codigo: $LASTEXITCODE"
 
-          Write-Host "=== git status apos add ==="
+          Write-Host "=== git status ==="
           git status
+
+          Write-Host "=== git log ultimos commits ==="
+          git log --oneline -3
 
           git diff --staged --quiet
           if ($LASTEXITCODE -ne 0) {
             $date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm UTC')
             git commit -m "chore: atualiza dados ETL $date"
-            git push
-            Write-Host "Push concluido com sucesso."
+            Write-Host "git commit saiu com codigo: $LASTEXITCODE"
+            git push 2>&1
+            Write-Host "git push saiu com codigo: $LASTEXITCODE"
           } else {
-            Write-Host "Nenhuma alteracao para commitar."
+            Write-Host "Sem alteracoes staged — nada para commitar."
           }
