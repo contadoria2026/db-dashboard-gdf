@@ -594,10 +594,10 @@ let PREVISAO  = [];
     });
 })();
 
-const ANO_ATUAL   = "2026";
-const ANO_ANTERIOR= "2025";
-const MAX_MES     = 3;
-const MESES_FECHADOS = [1, 2, 3];
+const ANO_ATUAL   = 2026;
+const ANO_ANTERIOR= 2025;
+const MAX_MES     = 4;
+const MESES_FECHADOS = [1, 2, 3, 4];
 
 const NOMES_MES = {
     1:'Janeiro',2:'Fevereiro',3:'Março',4:'Abril',
@@ -666,7 +666,7 @@ function filtrarExcluindo(excluir) {
     const espSel   = document.getElementById('fEspecie').value;
 
     let f = REGISTROS.filter(r => r.inmes <= mesSel);
-    if (ugSel    && excluir !== 'ug')       f = f.filter(r => r.coug === ugSel);
+    if (ugSel    && excluir !== 'ug')       f = f.filter(r => String(r.coug) === ugSel);
     if (fonteSel && excluir !== 'fonte')    f = f.filter(r => r.fonte_agrupada === fonteSel);
     if (intraSel === 'somente' && excluir !== 'intra') f = f.filter(r => isIntra(r));
     if (intraSel === 'excluir' && excluir !== 'intra') f = f.filter(r => !isIntra(r));
@@ -1075,7 +1075,7 @@ function aplicarFiltros() {
 
     // 1. Filtrar registros (realizado)
     let filtrados = REGISTROS.filter(r => r.inmes <= mesSel);
-    if (ugSel)    filtrados = filtrados.filter(r => r.coug === ugSel);
+    if (ugSel)    filtrados = filtrados.filter(r => String(r.coug) === ugSel);
     if (fonteSel) filtrados = filtrados.filter(r => r.fonte_agrupada === fonteSel);
     if (intraSel === 'somente') filtrados = filtrados.filter(r => isIntra(r));
     if (intraSel === 'excluir') filtrados = filtrados.filter(r => !isIntra(r));
@@ -1084,7 +1084,7 @@ function aplicarFiltros() {
 
     // 1b. Filtrar previsão (mesmos filtros)
     let filtPrev = PREVISAO.filter(r => r.inmes <= mesSel);
-    if (ugSel)    filtPrev = filtPrev.filter(r => r.coug === ugSel);
+    if (ugSel)    filtPrev = filtPrev.filter(r => String(r.coug) === ugSel);
     if (fonteSel) filtPrev = filtPrev.filter(r => r.fonte_agrupada === fonteSel);
     if (intraSel === 'somente') filtPrev = filtPrev.filter(r => isIntra(r));
     if (intraSel === 'excluir') filtPrev = filtPrev.filter(r => !isIntra(r));
@@ -1292,4 +1292,4 @@ function gerarPDF() {
 aplicarFiltros();
 </script>
 </body>
-</html>
+</ht
