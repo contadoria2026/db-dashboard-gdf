@@ -61,7 +61,7 @@ jobs:
           foreach ($file in $files) {
             Write-Host "Fazendo upload: $($file.Name) ($([math]::Round($file.Length/1MB, 2)) MB)"
             gh release upload dados-latest $file.FullName --clobber
-            Write-Host "Upload de $($file.Name) — codigo de saida: $LASTEXITCODE"
+            Write-Host "Upload de $($file.Name) - codigo de saida: $LASTEXITCODE"
           }
 
           Write-Host "Todos os arquivos publicados no release 'dados-latest'."
