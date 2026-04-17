@@ -38,20 +38,31 @@ jobs:
           Write-Host "Arquivos gerados em data/gz/"
           Get-ChildItem data\gz\ -ErrorAction SilentlyContinue | Format-Table Name, Length
 
-          # Garante que o release 'dados-latest' existe (cria se necessário)
-          $releaseExists = gh release view dados-latest 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Release 'dados-latest' nao encontrado. Criando..."
-            gh release create dados-latest `
-              --title "Dados Latest" `
-              --notes "Dados mais recentes gerados pelo ETL. Atualizado automaticamente todos os dias." `
-              --latest=false
-            Write-Host "Release criado. Codigo de saida: $LASTEXITCODE"
-          } else {
-            Write-Host "Release 'dados-latest' ja existe. Atualizando arquivos..."
+          $owner = $env:GITHUB_REPOSITORY.Split('/')[0]
+          $repo  = $env:GITHUB_REPOSITORY.Split('/')[1]
+          $tag   = "dados-latest"
+
+          $headers = @{
+            Authorization        = "Bearer $env:GITHUB_TOKEN"
+            Accept               = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
           }
 
-          # Faz upload dos .json.gz com --clobber (sobrescreve arquivos existentes)
+          # Verifica se o release existe, cria se necessario
+          try {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repo/releases/tags/$tag" -Headers $headers
+            Write-Host "Release '$tag' encontrado. ID: $($release.id)"
+          } catch {
+            Write-Host "Release '$tag' nao encontrado. Criando..."
+            $body = @{ tag_name = $tag; name = "Dados Latest"; body = "Dados mais recentes gerados pelo ETL."; prerelease = $false } | ConvertTo-Json
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repo/releases" -Method Post -Headers $headers -Body $body -ContentType "application/json"
+            Write-Host "Release criado. ID: $($release.id)"
+          }
+
+          # Lista assets existentes no release
+          $existingAssets = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repo/releases/$($release.id)/assets" -Headers $headers
+
+          # Upload de cada .json.gz (remove versao anterior se existir)
           $files = Get-ChildItem data\gz\*.json.gz -ErrorAction SilentlyContinue
           if ($files.Count -eq 0) {
             Write-Host "Nenhum arquivo .json.gz encontrado em data/gz/"
@@ -59,9 +70,20 @@ jobs:
           }
 
           foreach ($file in $files) {
-            Write-Host "Fazendo upload: $($file.Name) ($([math]::Round($file.Length/1MB, 2)) MB)"
-            gh release upload dados-latest $file.FullName --clobber
-            Write-Host "Upload de $($file.Name) - codigo de saida: $LASTEXITCODE"
+            Write-Host "Processando: $($file.Name) ($([math]::Round($file.Length/1MB, 2)) MB)"
+
+            $existing = $existingAssets | Where-Object { $_.name -eq $file.Name }
+            if ($existing) {
+              Write-Host "  Removendo versao anterior..."
+              Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repo/releases/assets/$($existing.id)" -Method Delete -Headers $headers
+            }
+
+            $uploadHeaders = $headers.Clone()
+            $uploadHeaders["Content-Type"] = "application/octet-stream"
+            $uploadUrl = "https://uploads.github.com/repos/$owner/$repo/releases/$($release.id)/assets?name=$($file.Name)"
+            $fileBytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers $uploadHeaders -Body $fileBytes | Out-Null
+            Write-Host "  Upload concluido."
           }
 
-          Write-Host "Todos os arquivos publicados no release 'dados-latest'."
+          Write-Host "Todos os arquivos publicados no release '$tag'."
