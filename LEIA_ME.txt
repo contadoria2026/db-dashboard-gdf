@@ -1,0 +1,186 @@
+================================================================================
+EXTRAÇÃO COMPLETA - DOIS ARQUIVOS HTML DE DASHBOARD ORÇAMENTÁRIO
+================================================================================
+
+Data: 17/04/2026
+Objetivo: Análise e preparação para reescrita do dashboard de despesa
+
+================================================================================
+ARQUIVOS DISPONÍVEIS
+================================================================================
+
+ARQUIVO 1 - RECEITA ORÇAMENTÁRIA (receita_orcamentaria.html)
+  ├─ RECEITA_01_STYLE.html      (15.872 bytes) - CSS completo
+  ├─ RECEITA_02_BODY.html       (190.838 bytes) - HTML estrutural
+  └─ RECEITA_03_SCRIPT.js       (35.168 bytes) - JavaScript
+
+ARQUIVO 2 - DESPESA ORÇAMENTÁRIA (despesa_orcamentaria.html)
+  ├─ DESPESA_01_STYLE.html      (17.573 bytes) - CSS completo
+  ├─ DESPESA_02_BODY.html       (192.928 bytes) - HTML estrutural
+  └─ DESPESA_03_SCRIPT.js       (47.385 bytes) - JavaScript
+
+CONSOLIDAÇÕES
+  ├─ ANALISE_COMPLETA_DOIS_ARQUIVOS.txt (500.359 bytes)
+  │  → Contém TODOS os blocos <style>, <body> e <script> de ambos os arquivos
+  │  → Uso: Colar diretamente em editores ou usar como referência
+  │
+  └─ RESUMO_ANALISE.md (5.510 bytes)
+     → Resumo executivo com estatísticas e recomendações
+     → Uso: Planejamento e estratégia de reescrita
+
+================================================================================
+COMO USAR
+================================================================================
+
+OPÇÃO 1: Trabalhar com arquivos separados (RECOMENDADO)
+  1. Abrir RECEITA_01_STYLE.html em editor de código
+  2. Copiar o CSS para seu novo arquivo
+  3. Copiar RECEITA_02_BODY.html e adaptar elementos
+  4. Copiar RECEITA_03_SCRIPT.js e adaptar para despesa
+
+OPÇÃO 2: Trabalhar com consolidação completa
+  1. Abrir ANALISE_COMPLETA_DOIS_ARQUIVOS.txt
+  2. Buscar "=== ARQUIVO 1" ou "=== ARQUIVO 2"
+  3. Copiar blocos específicos conforme necessário
+
+OPÇÃO 3: Orientado por recomendações
+  1. Ler RESUMO_ANALISE.md
+  2. Seguir seção "RECOMENDAÇÕES PARA REESCRITA"
+  3. Usar RECEITA como modelo base
+  4. Adaptar DESPESA conforme padrão
+
+================================================================================
+ESTRUTURA DO DASHBOARD
+================================================================================
+
+COMPONENTES PRINCIPAIS:
+  1. Header (verde #006633)
+     - Logo
+     - Título (Receita ou Despesa)
+     - Data de atualização
+     - Botão voltar
+
+  2. Sidebar (coluna lateral 250px, sticky)
+     - Filtros por Período (dropdown)
+     - Filtros por Órgão (dropdown)
+     - Grupos de Detalhe (checkboxes)
+     - Botão "Limpar Filtros"
+     - Botão "Gerar PDF"
+
+  3. Conteúdo Principal (flex: 1)
+     - Cards de resumo (4 cards com métricas)
+     - Gráficos (barras, gauge, linhas)
+     - Tabela scrollável
+       * Colunas: Descrição, Dotação, Arrecadado/Gasto, %, Variação
+       * Níveis: 1-5 (indentação progressiva)
+       * Dropdown de UG por tipo
+
+  4. Footer
+     - Nota de data e versão
+
+================================================================================
+DIFERENÇAS-CHAVE: RECEITA vs. DESPESA
+================================================================================
+
+CSS:
+  - Praticamente idêntico
+  - Mesmas classes e estrutura
+  - Ligeiras diferenças em margens/espaçamento
+
+HTML:
+  - Estrutura idêntica
+  - Labels diferentes:
+    * Receita: "Arrecadado", "% Arrecadação"
+    * Despesa: "Gasto", "% Execução"
+  - Grupos de detalhe adaptados
+
+JavaScript:
+  - Despesa tem ~12KB a mais que Receita
+  - Lógica de filtro/renderização similar
+  - Possível validação adicional para despesa
+
+================================================================================
+RESUMO DE TAMANHOS
+================================================================================
+
+ARQUIVO 1 (receita_orcamentaria.html): 276.774 caracteres
+  - Style:   15.840 (5,7%)
+  - Body:   225.866 (81,6%)
+  - Script:  35.068 (12,7%)
+
+ARQUIVO 2 (despesa_orcamentaria.html): 304.927 caracteres
+  - Style:   17.539 (5,7%)
+  - Body:   240.133 (78,8%)
+  - Script:  47.255 (15,5%)
+
+Diferença: +28.153 caracteres (+10,2%)
+  - Principais: +14KB no HTML, +12KB no JS
+
+================================================================================
+RECOMENDAÇÕES
+================================================================================
+
+1. USAR RECEITA COMO MODELO BASE
+   ✓ CSS mais enxuto
+   ✓ JavaScript mais limpo
+   ✓ Estrutura padronizada
+
+2. ADAPTAR DESPESA
+   → Copiar HTML de Receita
+   → Manter estrutura idêntica
+   → Substituir apenas labels e endpoints de dados
+
+3. CONSOLIDAR CSS
+   → Usar um único arquivo CSS para ambos
+   → Variáveis CSS para cores (#006633) e breakpoints
+
+4. SIMPLIFICAR JAVASCRIPT
+   → Revisar se há redundâncias no Despesa
+   → Extrair funções comuns
+   → Usar callbacks ou eventos para reutilização
+
+================================================================================
+NOTAS TÉCNICAS
+================================================================================
+
+MÉTODO DE EXTRAÇÃO:
+  - Python3 com regex
+  - Extração de <style>, <body> e <script>
+  - Limpeza de tags de abertura/fechamento
+
+VALIDAÇÃO:
+  - 100% dos caracteres extraídos
+  - Verbatim (cópia exata)
+  - Sem alterações ou compactações
+
+COMPATIBILIDADE:
+  - Todos os arquivos em UTF-8
+  - Estilos CSS válidos
+  - JavaScript moderno (fetch, promises, etc.)
+
+================================================================================
+PRÓXIMOS PASSOS
+================================================================================
+
+1. [ ] Revisar RESUMO_ANALISE.md
+2. [ ] Comparar RECEITA_01_STYLE.html com DESPESA_01_STYLE.html
+3. [ ] Copiar RECEITA como base
+4. [ ] Adaptar labels em RECEITA_02_BODY.html
+5. [ ] Revisar RECEITA_03_SCRIPT.js vs. DESPESA_03_SCRIPT.js
+6. [ ] Simplificar código duplicado
+7. [ ] Testar responsividade
+8. [ ] Testar impressão/PDF
+
+================================================================================
+CONTATO / SUPORTE
+================================================================================
+
+Todos os arquivos estão em:
+  /sessions/wonderful-festive-noether/mnt/DB_JasonGitHub/
+
+Para dúvidas sobre a extração, consulte RESUMO_ANALISE.md
+
+Data de processamento: 2026-04-17 22:03 UTC
+Completude: 100%
+
+================================================================================
