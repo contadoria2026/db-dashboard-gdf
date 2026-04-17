@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Instalar dependencias Python
-        run: pip install -r requirements.txt
+        run: py -m pip install -r requirements.txt
 
       - name: Rodar ETL
         env:
@@ -28,7 +28,7 @@ jobs:
           DB_MAX_CONNECTIONS:       ${{ secrets.DB_MAX_CONNECTIONS }}
           DB_INCREMENT_CONNECTIONS: ${{ secrets.DB_INCREMENT_CONNECTIONS }}
           ORACLE_CLIENT_PATH:       ${{ secrets.ORACLE_CLIENT_PATH }}
-        run: python etl.py
+        run: py etl.py
 
       - name: Commitar JSON.GZ no repositorio
         shell: powershell
