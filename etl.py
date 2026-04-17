@@ -65,14 +65,10 @@ QUERIES = [
         "sql_file": "RECEITA.sql",
     },
     {
-        # Despesa Orçamentária — arquivo grande (>100 MB), hospedado no GitHub Releases
+        # Despesa Orçamentária — inclui dotação inicial + créditos adicionais (522110000-522199999)
+        # + execução: empenhada/liquidada/paga (classe 6)
         "file": "despesa.json",
         "sql_file": "DESPESA.sql",
-    },
-    {
-        # Créditos Adicionais — hospedado no GitHub Releases
-        "file": "creditos_adicionais.json",
-        "sql_file": "CREDITOS_ADICIONAIS.sql",
     },
     # Adicione mais queries aqui seguindo o mesmo padrão.
 ]
