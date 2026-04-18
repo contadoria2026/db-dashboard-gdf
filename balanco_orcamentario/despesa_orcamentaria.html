@@ -1,12 +1,10 @@
 <\!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Despesa Orcamentaria - GDF</title>
-  <style>
-<style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanço Orçamentário — Despesa — ContDF/SEEC</title>
+    <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -412,10 +410,16 @@
             .sub-row.visivel { display: table-row !important; }
             .sub-row { display: none !important; }
             .desp-toggle::before { content: '' !important; width: 0 !important; }
-            .total-geral { background: #006633 !important; -webkit-print-color-adjust: exact; print-color-adj
-  </style>
+            .total-geral { background: #006633 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .total-geral td { color: #fff !important; font-size: 11px; }
+            .valor-negativo { color: #d32f2f !important; }
+            .footer { font-size: 9px; margin-top: 8px; }
+            .aviso-fallback { font-size: 10px; padding: 6px 10px; }
+            .graficos-section { display: none !important; }
+            .cards-row { display: none !important; }
+        }
+    </style>
 </head>
-<body>
 
 
 <div class="header">
@@ -621,7 +625,14 @@
             </div>
         </div>
 
-       
+        <div class="footer">
+            Fonte: SIGGO/SIAC — Contadoria Geral do Distrito Federal (ContDF/Sefin/SEEC)<br>
+            Gerado em: 12/04/2026 às 15:16
+        </div>
+    </main>
+
+</div>
+
 <script>
 
 // ============ DADOS CARREGADOS VIA FETCH ============
@@ -637,10 +648,9 @@ let REGISTROS = [];
     'z-index:9999', 'font-family:sans-serif', 'font-size:1rem', 'color:#555',
     'flex-direction:column', 'gap:12px'
   ].join(';');
-  overlay.innerHTML = '<div style="font-size:2rem">⏳</div><div>Carregando dados da despesa…</div>';
+  overlay.innerHTML = '<div style="font-size:2rem">&#9203;</div><div>Carregando dados da despesa…</div>';
   document.body.appendChild(overlay);
 
-  // Busca JSON.GZ do repositorio e descomprime via DecompressionStream
   function fetchJsonGz(url) {
     return fetch(url).then(function (r) {
       if (!r.ok) throw new Error(url.split('/').pop() + ' - HTTP ' + r.status);
@@ -652,28 +662,39 @@ let REGISTROS = [];
   }
 
   fetchJsonGz('../data/gz/despesa.json.gz')
-    .then(function(json) {
-      json.dados.forEach(function(r) {
+    .then(function (json) {
+      // Converter campos numericos para string (formato original)
+      json.dados.forEach(function (r) {
+        r.coexercicio    = String(r.coexercicio);
+        r.coug           = String(r.coug);
+        r.cocontacontabil = String(r.cocontacontabil);
+        r.cofuncao       = String(r.cofuncao || '').padStart(2, '0');
+        r.cosubfuncao    = String(r.cosubfuncao || '');
+        r.inmes          = Number(r.inmes);
         REGISTROS.push(r);
       });
-      overlay.remove();
+
+      // Atualizar data
       var dataEl = document.getElementById('dataAtualizacao');
       if (dataEl && json.atualizado_em) {
         var d = new Date(json.atualizado_em);
         dataEl.textContent = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
       }
+
+      overlay.remove();
       aplicarFiltros();
     })
-        .catch(function (err) {
+    .catch(function (err) {
       overlay.innerHTML =
-        '<div style="font-size:1.5rem">❌</div><div>Erro ao carregar dados:<br><code>' +
+        '<div style="font-size:1.5rem">&#10060;</div><div>Erro ao carregar dados:<br><code>' +
         err.message + '</code></div>';
       overlay.style.color = '#c62828';
     });
 })();
 
-const ANO_ATUAL    = 2026;
-const ANO_ANTERIOR = 2025;
+
+const ANO_ATUAL    = "2026";
+const ANO_ANTERIOR = "2025";
 const MAX_MES      = 4;
 
 const NOMES_MES = {
@@ -681,8 +702,6 @@ const NOMES_MES = {
     5:'Maio',6:'Junho',7:'Julho',8:'Agosto',
     9:'Setembro',10:'Outubro',11:'Novembro',12:'Dezembro'
 };
-
-// ============ POPULAR DROPDOWNS ============
 
 // Mês — fixo (não depende dos outros filtros)
 (function() {
@@ -696,8 +715,11 @@ const NOMES_MES = {
     sel.value = MAX_MES;
 })();
 
+
 // Despesas ignoradas (global)
 const DESPESAS_IGNORAR_GLOBAL = ['11130300', '16210200'];
+
+
 
 // Helper: repopula um <select> preservando a seleção anterior
 function repopularSelect(selId, itens, valorAnterior) {
@@ -734,7 +756,7 @@ function filtrarExcluindo(excluir) {
     const subfSel  = document.getElementById('fSubfuncao').value;
 
     let f = REGISTROS.filter(r => r.inmes <= mesSel && !DESPESAS_IGNORAR_GLOBAL.includes(r.despesa));
-    if (ugSel    && excluir !== 'ug')       f = f.filter(r => String(r.coug) === ugSel);
+    if (ugSel    && excluir !== 'ug')       f = f.filter(r => r.coug === ugSel);
     if (supSel   && excluir !== 'superavit') f = f.filter(r => isFonteSuperavit(r));
     if (fonteSel && excluir !== 'fonte')    f = f.filter(r => r.fonte_agrupada === fonteSel);
     if (intraSel === 'somente' && excluir !== 'intra') f = f.filter(r => isIntra(r));
@@ -742,8 +764,8 @@ function filtrarExcluindo(excluir) {
     if (catEconSel && excluir !== 'catecon') f = f.filter(r => isCatEconDesp(r, catEconSel));
     if (gndSel   && excluir !== 'gnd')      f = f.filter(r => r.gnd === gndSel);
     if (despSel  && excluir !== 'desp')     f = f.filter(r => r.despesa === despSel);
-    if (funcSel  && excluir !== 'funcao')   f = f.filter(r => String(r.cofuncao) === funcSel);
-    if (subfSel  && excluir !== 'subfuncao') f = f.filter(r => String(r.cosubfuncao) === subfSel);
+    if (funcSel  && excluir !== 'funcao')   f = f.filter(r => r.cofuncao === funcSel);
+    if (subfSel  && excluir !== 'subfuncao') f = f.filter(r => r.cosubfuncao === subfSel);
     return f;
 }
 
@@ -827,7 +849,7 @@ function atualizarDropdowns() {
         const regParaSub = filtrarExcluindo('subfuncao');
         const subsVisiveis = {};
         regParaSub.forEach(r => {
-            if (String(r.cofuncao) === funcSel && r.cosubfuncao && r.nosubfuncao)
+            if (r.cofuncao === funcSel && r.cosubfuncao && r.nosubfuncao)
                 subsVisiveis[r.cosubfuncao] = r.nosubfuncao;
         });
         repopularSelect('fSubfuncao',
@@ -841,21 +863,14 @@ function atualizarDropdowns() {
 }
 
 // ============ CLASSIFICAÇÃO DE CONTAS ============
-function isEmpenhada(r)  {
-    const c = Number(r.cocontacontabil);
-    return c >= 622130000 && c <= 622139999;
-}
-function isLiquidada(r) {
-    const c = Number(r.cocontacontabil);
-    return c === 622130300 || c === 622130400 || c === 622130700;
-}
-function isPaga(r) { return Number(r.cocontacontabil) === 622920104; }
+function isEmpenhada(r)  { return r.cocontacontabil >= '622130000' && r.cocontacontabil <= '622139999'; }
+function isLiquidada(r)  { return r.cocontacontabil === '622130300' || r.cocontacontabil === '622130400' || r.cocontacontabil === '622130700'; }
+function isPaga(r)       { return r.cocontacontabil === '622920104'; }
 function isAutorizada(r) {
-    const c = Number(r.cocontacontabil);
-    return (c >= 522110000 && c <= 522129999)
-        || (c >= 522130000 && c <= 522139999)  // créditos adicionais — NOVO
-        || (c >= 522150000 && c <= 522159999)
-        || (c >= 522190000 && c <= 522199999);
+    const c = r.cocontacontabil;
+    return (c >= '522110000' && c <= '522129999')
+        || (c >= '522150000' && c <= '522159999')
+        || (c >= '522190000' && c <= '522199999');
 }
 function isIntra(r)      { return r.intra === '91'; }
 
@@ -1357,7 +1372,7 @@ function aplicarFiltros() {
 
     // Filtrar
     let filtrados = REGISTROS.filter(r => r.inmes <= mesSel && !DESPESAS_IGNORAR_GLOBAL.includes(r.despesa));
-    if (ugSel)    filtrados = filtrados.filter(r => String(r.coug) === ugSel);
+    if (ugSel)    filtrados = filtrados.filter(r => r.coug === ugSel);
     if (supSel)   filtrados = filtrados.filter(r => isFonteSuperavit(r));
     if (fonteSel) filtrados = filtrados.filter(r => r.fonte_agrupada === fonteSel);
     if (intraSel === 'somente') filtrados = filtrados.filter(r => isIntra(r));
@@ -1365,8 +1380,8 @@ function aplicarFiltros() {
     if (catEconSel) filtrados = filtrados.filter(r => isCatEconDesp(r, catEconSel));
     if (gndSel)   filtrados = filtrados.filter(r => r.gnd === gndSel);
     if (despSel)  filtrados = filtrados.filter(r => r.despesa === despSel);
-    if (funcSel)  filtrados = filtrados.filter(r => String(r.cofuncao) === funcSel);
-    if (subfSel)  filtrados = filtrados.filter(r => String(r.cosubfuncao) === subfSel);
+    if (funcSel)  filtrados = filtrados.filter(r => r.cofuncao === funcSel);
+    if (subfSel)  filtrados = filtrados.filter(r => r.cosubfuncao === subfSel);
 
     // Agregar por hierarquia (ano atual + anterior)
     function agregar(registros, camposGrupo) {
@@ -1423,7 +1438,7 @@ function aplicarFiltros() {
         // Paga usa 622130400 para subelemento (622920104 não carrega conta corrente com subelemento)
         const subEmp = agregarSubelemento(filtExec, ['despesa'], isEmpenhada);
         const subLiq = agregarSubelemento(filtExec, ['despesa'], isLiquidada);
-        const subPag = agregarSubelemento(filtExec, ['despesa'], function(r) { return Number(r.cocontacontabil) === 622130400; });
+        const subPag = agregarSubelemento(filtExec, ['despesa'], function(r) { return r.cocontacontabil === '622130400'; });
 
         subsPorDesp = { emp: subEmp, liq: subLiq, pag: subPag };
 
@@ -1604,6 +1619,28 @@ function gerarPDF() {
     const funcTexto  = funcEl.value ? funcEl.options[funcEl.selectedIndex].textContent : 'Todas';
     const subfEl     = document.getElementById('fSubfuncao');
     const subfTexto  = subfEl.value ? subfEl.options[subfEl.selectedIndex].textContent : 'Todas';
-  
+    const intraTexto = intraVal === 'somente' ? 'Somente Intra' : intraVal === 'excluir' ? 'Excluir Intra' : 'Todas';
+    const catEconTexto = catEconVal === 'corrente' ? 'Corrente' : catEconVal === 'capital' ? 'Capital' : 'Todas';
+
+    document.getElementById('printResumo').innerHTML = `<strong>Filtros aplicados:</strong> `
+        + `Mês: <strong>${mesTexto}</strong> | `
+        + `UG: <strong>${ugTexto}</strong> | `
+        + `Fonte: <strong>${fonteTexto}</strong> | `
+        + (supVal ? `Superávit: <strong>Sim</strong> | ` : '')
+        + `Intra: <strong>${intraTexto}</strong> | `
+        + `Cat. Econômica: <strong>${catEconTexto}</strong> | `
+        + `GND: <strong>${gndTexto}</strong> | `
+        + `Despesa: <strong>${despTexto}</strong> | `
+        + `Função: <strong>${funcTexto}</strong> | `
+        + `Subfunção: <strong>${subfTexto}</strong> | `
+        + `Exercício: <strong>${ANO_ATUAL}</strong>`;
+
+    window.print();
+}
+
+// Inicializar
+aplicarFiltros();
+
 </script>
+</body>
 </html>
