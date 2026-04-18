@@ -1,4 +1,4 @@
-<\!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -77,9 +77,9 @@
         }
         .filtro-intra label {
             display: flex; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 400 \!important; color: #333 \!important;
-            text-transform: none \!important; cursor: pointer;
-            letter-spacing: 0 \!important;
+            font-size: 12px; font-weight: 400 !important; color: #333 !important;
+            text-transform: none !important; cursor: pointer;
+            letter-spacing: 0 !important;
         }
         .filtro-intra input[type="radio"] { accent-color: #006633; }
         .filtro-detalhar {
@@ -336,7 +336,7 @@
     <main class="conteudo">
         <div class="print-filtros-resumo" id="printResumo"></div>
 
-        <\!-- CARDS RESUMO -->
+        <!-- CARDS RESUMO -->
         <div class="cards-row">
             <div class="card">
                 <div class="card-label">Dotação Autorizada</div>
@@ -360,7 +360,7 @@
             </div>
         </div>
 
-        <\!-- GRÁFICOS TOPO -->
+        <!-- GRÁFICOS TOPO -->
         <div class="graficos-topo">
             <div class="grafico-barras-box">
                 <div class="grafico-titulo">Liquidada por Função (2026)</div>
@@ -375,7 +375,7 @@
             </div>
         </div>
 
-        <\!-- TABELA -->
+        <!-- TABELA -->
         <div class="tabela-container">
             <div class="tabela-scroll">
                 <table>
@@ -393,19 +393,19 @@
             </div>
         </div>
 
-        <\!-- EVOLUÇÃO MENSAL -->
+        <!-- EVOLUÇÃO MENSAL -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-titulo">Evolução Mensal — Liquidado Acumulado (2026 vs 2025)</div>
             <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 200" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
 
-        <\!-- TREEMAP -->
+        <!-- TREEMAP -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-titulo">Liquidada por GND (2026)</div>
             <div class="treemap-container" id="treemapChart"></div>
         </div>
 
-        <\!-- PIZZA -->
+        <!-- PIZZA -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-titulo" id="pizzaTitulo">Despesa Liquidada por Função (2026)</div>
             <svg id="pizzaChart" class="pie-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet"></svg>
@@ -438,7 +438,7 @@ const MESES_NOMES  = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago'
   // Descomprime gzip
   function fetchJsonGz(url) {
     return fetch(url).then(function (r) {
-      if (\!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       var ds = new DecompressionStream('gzip');
       return new Response(r.body.pipeThrough(ds)).text();
     }).then(function (text) {
@@ -573,19 +573,19 @@ function aplicarFiltros() {
   // Filtra
   let filtrados = REGISTROS.filter(function(r) {
     if (r.inmes > mesSel) return false;
-    if (r.coexercicio \!= ANO_ATUAL) return false;
-    if (ugSel && String(r.coug) \!== ugSel) return false;
-    if (fonteSel && String(r.cofonte) \!== fonteSel) return false;
+    if (r.coexercicio != ANO_ATUAL) return false;
+    if (ugSel && String(r.coug) !== ugSel) return false;
+    if (fonteSel && String(r.cofonte) !== fonteSel) return false;
     
-    if (intraSel === 'somente' && r.intra \!== '91') return false;
+    if (intraSel === 'somente' && r.intra !== '91') return false;
     if (intraSel === 'excluir' && r.intra === '91') return false;
     
-    if (categEconSel === 'corrente' && r.despesa[0] \!== '3') return false;
-    if (categEconSel === 'capital' && r.despesa[0] \!== '4') return false;
+    if (categEconSel === 'corrente' && r.despesa[0] !== '3') return false;
+    if (categEconSel === 'capital' && r.despesa[0] !== '4') return false;
     
-    if (gndSel && String(r.gnd) \!== gndSel) return false;
-    if (funcaoSel && String(r.cofuncao) \!== funcaoSel) return false;
-    if (subfuncaoSel && String(r.cosubfuncao) \!== subfuncaoSel) return false;
+    if (gndSel && String(r.gnd) !== gndSel) return false;
+    if (funcaoSel && String(r.cofuncao) !== funcaoSel) return false;
+    if (subfuncaoSel && String(r.cosubfuncao) !== subfuncaoSel) return false;
     
     return true;
   });
@@ -651,7 +651,7 @@ function atualizarCards(filtrados, mesSel) {
 
 function renderGauge(pct) {
   const svg = document.getElementById('gaugeChart');
-  if (\!svg) return;
+  if (!svg) return;
   svg.innerHTML = '';
 
   // Arco do gauge
@@ -697,10 +697,10 @@ function renderTabela(filtrados) {
     const gnd = r.gnd || '?';
     const nomeGnd = r.nome_gnd || '?';
 
-    if (\!mapa[catEcon]) {
+    if (!mapa[catEcon]) {
       mapa[catEcon] = { nome: nomeCatEcon, gnds: {}, total: { dot: 0, emp: 0, liq: 0 } };
     }
-    if (\!mapa[catEcon].gnds[gnd]) {
+    if (!mapa[catEcon].gnds[gnd]) {
       mapa[catEcon].gnds[gnd] = { nome: nomeGnd, linhas: [], total: { dot: 0, emp: 0, liq: 0 } };
     }
 
@@ -769,7 +769,7 @@ function renderBarras(filtrados) {
     const cc = String(r.cocontacontabil || '');
     const valor = (cc === '622130300' || cc === '622130400' || cc === '622130700') ? r.saldo || 0 : 0;
 
-    if (\!funcoes[funcao]) funcoes[funcao] = { nome: nomeFuncao, total: 0 };
+    if (!funcoes[funcao]) funcoes[funcao] = { nome: nomeFuncao, total: 0 };
     funcoes[funcao].total += valor;
   });
 
@@ -795,7 +795,7 @@ function renderTreemap(filtrados) {
     const cc = String(r.cocontacontabil || '');
     const valor = (cc === '622130300' || cc === '622130400' || cc === '622130700') ? r.saldo || 0 : 0;
 
-    if (\!gnds[gnd]) gnds[gnd] = { nome: nomeGnd, total: 0 };
+    if (!gnds[gnd]) gnds[gnd] = { nome: nomeGnd, total: 0 };
     gnds[gnd].total += valor;
   });
 
@@ -845,7 +845,7 @@ function renderLinhaEvolucao(filtrados) {
   }
 
   const svg = document.getElementById('lineChart');
-  if (\!svg) return;
+  if (!svg) return;
   svg.innerHTML = '';
 
   const maxVal = Math.max(
@@ -975,7 +975,7 @@ function renderPizza(filtrados) {
       document.getElementById('pizzaTitulo').textContent = 'Despesa Liquidada por Função (2026)';
     }
 
-    if (\!dados[chave]) dados[chave] = { nome: nome, total: 0 };
+    if (!dados[chave]) dados[chave] = { nome: nome, total: 0 };
     dados[chave].total += valor;
   });
 
@@ -983,7 +983,7 @@ function renderPizza(filtrados) {
   const totalVal = itens.reduce((s, d) => s + d.total, 0);
 
   const svg = document.getElementById('pizzaChart');
-  if (\!svg) return;
+  if (!svg) return;
   svg.innerHTML = '';
 
   const cores = ['#1976d2', '#388e3c', '#d32f2f', '#f57c00', '#7b1fa2', '#00796b', '#c2185b', '#455a64'];
@@ -1043,36 +1043,4 @@ function renderPizza(filtrados) {
     rect.setAttribute('width', '12');
     rect.setAttribute('height', '12');
     rect.setAttribute('fill', cores[idx % cores.length]);
-    g.appendChild(rect);
-
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', legX + 16);
-    text.setAttribute('y', legY + 10);
-    text.setAttribute('font-size', '11');
-    text.setAttribute('fill', '#333');
-    text.textContent = item.nome + ' (' + (item.total / totalVal * 100).toFixed(1) + '%)';
-    g.appendChild(text);
-
-    svg.appendChild(g);
-    legY += 20;
-  });
-}
-
-function limparFiltros() {
-  document.getElementById('fMes').value = MAX_MES;
-  document.getElementById('fUG').value = '';
-  document.getElementById('fFonte').value = '';
-  document.getElementById('fGND').value = '';
-  document.getElementById('fFuncao').value = '';
-  document.getElementById('fSubfuncao').value = '';
-  document.querySelector('input[name="rIntra"][value=""]').checked = true;
-  document.querySelector('input[name="rCategEcon"][value=""]').checked = true;
-  aplicarFiltros();
-}
-
-function gerarPDF() {
-  alert('Gerar PDF ainda não implementado. Copie a tela para PDF.');
-}
-</script>
-</body>
-</html>
+  
