@@ -681,7 +681,7 @@ let REGISTROS = [];
       var dataEl = document.getElementById('data-atualizacao');
       if (dataEl && json.atualizado_em) {
         var d = new Date(json.atualizado_em);
-        dataEl.textContent = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        dataEl.textContent = 'Dados atualizados em: ' + d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
       }
 
       overlay.remove();
