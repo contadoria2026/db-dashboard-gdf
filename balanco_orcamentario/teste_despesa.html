@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste Despesa</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+    #log { background: #fff; border: 1px solid #ccc; padding: 16px; white-space: pre-wrap; font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+    th { background: #1a3a5c; color: #fff; }
+    tr:nth-child(even) { background: #f9f9f9; }
+  </style>
+</head>
+<body>
+<h2>Teste de Carregamento — despesa.json.gz</h2>
+<div id="log">Iniciando...</div>
+<div id="tabela"></div>
+
+<script>
+var log = document.getElementById('log');
+
+function appendLog(msg) {
+  log.textContent += '\n' + msg;
+}
+
+appendLog('Buscando ../data/gz/despesa.json.gz ...');
+
+fetch('../data/gz/despesa.json.gz')
+  .then(function(r) {
+    appendLog('HTTP status: ' + r.status + ' ' + r.statusText);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var ds = new DecompressionStream('gzip');
+    return new Response(r.body.pipeThrough(ds)).text();
+  })
+  .then(function(text) {
+    appendLog('Bytes recebidos (descomprimido): ' + text.length);
+    var json = JSON.parse(text);
+    appendLog('atualizado_em: ' + json.atualizado_em);
+    appendLog('total registros: ' + json.total);
+
+    var dados = json.dados;
+    appendLog('dados.length: ' + dados.length);
+
+    // Mostra primeiros campos do 1o registro
+    if (dados.length > 0) {
+      appendLog('\nPrimeiro registro (campos):');
+      var r0 = dados[0];
+      Object.keys(r0).forEach(function(k) {
+        appendLog('  ' + k + ': ' + JSON.stringify(r0[k]));
+      });
+    }
+
+    // Conta por coexercicio
+    var porAno = {};
+    dados.forEach(function(r) {
+      var ano = r.coexercicio;
+      porAno[ano] = (porAno[ano] || 0) + 1;
+    });
+    appendLog('\nRegistros por coexercicio:');
+    Object.keys(porAno).sort().forEach(function(a) {
+      appendLog('  ' + a + ' (' + typeof a + '): ' + porAno[a] + ' registros');
+    });
+
+    // Conta por cocontacontabil (primeiros 4 chars)
+    var porConta = {};
+    dados.forEach(function(r) {
+      var cc = String(r.cocontacontabil || '').substring(0, 4);
+      porConta[cc] = (porConta[cc] || 0) + 1;
+    });
+    appendLog('\nRegistros por prefixo de conta (primeiros 4 digitos):');
+    Object.keys(porConta).sort().forEach(function(c) {
+      appendLog('  ' + c + ': ' + porConta[c]);
+    });
+
+    // Filtra ANO_ATUAL = 2026 com ==
+    var ano2026_loose = dados.filter(function(r) { return r.coexercicio == 2026; });
+    var ano2026_strict = dados.filter(function(r) { return r.coexercicio === 2026; });
+    var ano2026_str = dados.filter(function(r) { return r.coexercicio === '2026'; });
+    appendLog('\nFiltro coexercicio == 2026 (loose):  ' + ano2026_loose.length);
+    appendLog('Filtro coexercicio === 2026 (strict number): ' + ano2026_strict.length);
+    appendLog('Filtro coexercicio === "2026" (strict string): ' + ano2026_str.length);
+
+    // Filtra classe 5 e 6
+    var classe5 = dados.filter(function(r) {
+      var cc = String(r.cocontacontabil || '');
+      return cc >= '522110000' && cc <= '522199999';
+    });
+    var classe6 = dados.filter(function(r) {
+      var cc = String(r.cocontacontabil || '');
+      return (cc >= '622130000' && cc <= '622139999') || cc === '622920104';
+    });
+    appendLog('\nRegistros classe 5 (dotacao): ' + classe5.length);
+    appendLog('Registros classe 6 (execucao): ' + classe6.length);
+
+    // Mostra primeiras 20 linhas em tabela
+    var campos = ['coexercicio', 'inmes', 'coug', 'noug', 'cocontacontabil', 'vadebito', 'vacredito', 'saldo', 'gnd', 'nome_gnd'];
+    var html = '<table><thead><tr>' + campos.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+    dados.slice(0, 30).forEach(function(r) {
+      html += '<tr>' + campos.map(function(c) { return '<td>' + (r[c] !== undefined ? r[c] : '') + '</td>'; }).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('tabela').innerHTML = '<h3>Primeiros 30 registros:</h3>' + html;
+  })
+  .catch(function(err) {
+    appendLog('ERRO: ' + err.message);
+    appendLog(err.stack || '');
+  });
+</script>
+</body>
+</html>
