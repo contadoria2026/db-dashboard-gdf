@@ -3,6 +3,4 @@ __pycache__/
 *.pyc
 
 # JSONs grandes — não subir ao GitHub (ultrapassam 100 MB)
-data/despesa.json
-data/creditos_adicionais.json
- 
+data/despesa.json 

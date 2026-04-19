@@ -36,10 +36,12 @@ O ETL roda automaticamente todo dia às **06:00 (horário de Brasília)** via Gi
 │   ├── gz/                             # Arquivos comprimidos (commitados)
 │   │   ├── despesa.json.gz
 │   │   ├── receita.json.gz
+│   │   ├── rcl.json.gz                 # Estrutura D pré-agregada (gerada por build_rcl_data)
 │   │   └── saldo_funcao_subfuncao.json.gz
 │   └── queries/                        # SQLs das extrações
 │       ├── DESPESA.sql
 │       ├── RECEITA.sql
+│       ├── receita_RCL.sql             # SQL da RCL (retorna linhas brutas por conta)
 │       └── saldocontabil_funcao_subfuncao.sql
 ├── balanco_orcamentario/
 │   ├── index.html                      # Menu: Receita e Despesa
@@ -47,6 +49,8 @@ O ETL roda automaticamente todo dia às **06:00 (horário de Brasília)** via Gi
 │   └── despesa_orcamentaria.html       # Dashboard de Despesa
 ├── funcao-subfuncao/
 │   └── index.html                      # Dashboard Função e Subfunção
+├── rcl/
+│   └── index.html                      # Dashboard Receita Corrente Líquida (RREO)
 └── tools/
     └── Brasão_do_Distrito_Federal_Brasil.png
 ```
@@ -230,7 +234,8 @@ Início (index.html)
 ├── Balanço Orçamentário  →  balanco_orcamentario/index.html
 │   ├── Receita Orçamentária
 │   └── Despesa Orçamentária
-└── Função e Subfunção    →  funcao-subfuncao/index.html
+├── Função e Subfunção    →  funcao-subfuncao/index.html
+└── Receita Corrente Líquida  →  rcl/index.html
 ```
 
 ---
