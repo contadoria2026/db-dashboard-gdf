@@ -1,5 +1,5 @@
 """
-ETL: Oracle (BO/GDF) → JSON.GZ → GitHub Releases
+ETL: Oracle (BO/GDF) -> JSON.GZ -> GitHub Releases
 Extrai dados via oracledb, comprime com gzip e salva em data/gz/
 para upload no Release 'dados-latest' do GitHub.
 Os dashboards consomem os arquivos diretamente do Release.
@@ -14,7 +14,6 @@ from decimal import Decimal
 from pathlib import Path
 from dotenv import load_dotenv
 
-# ── Variáveis de ambiente ──────────────────────────────────────────────────
 load_dotenv()
 
 DB_USER     = os.getenv("DB_USER")
@@ -25,7 +24,6 @@ DB_MIN  = int(os.getenv("DB_MIN_CONNECTIONS", 1))
 DB_MAX  = int(os.getenv("DB_MAX_CONNECTIONS", 5))
 DB_INC  = int(os.getenv("DB_INCREMENT_CONNECTIONS", 1))
 
-# ── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -33,7 +31,6 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Caminhos ───────────────────────────────────────────────────────────────
 BASE_DIR    = Path(__file__).parent
 OUTPUT_DIR  = BASE_DIR / "data"
 GZ_DIR      = BASE_DIR / "data" / "gz"
@@ -41,43 +38,30 @@ QUERIES_DIR = BASE_DIR / "data" / "queries"
 OUTPUT_DIR.mkdir(exist_ok=True)
 GZ_DIR.mkdir(exist_ok=True)
 
-# Schema Oracle dinâmico: mil2026, mil2027, ...
 SCHEMA_ANO = f"mil{datetime.now().year}"
 
-
-# ──────────────────────────────────────────────────────────────────────────
-#  QUERIES
-#
-#  Cada item aceita:
-#    "file"     → nome do arquivo JSON gerado em data/
-#    "sql_file" → nome do arquivo .sql dentro de data/queries/
-#                 (suporte ao placeholder {SCHEMA_ANO})
-# ──────────────────────────────────────────────────────────────────────────
 QUERIES = [
     {
-        # Saldo contábil por função e subfunção (dashboard funcao-subfuncao)
         "file": "saldo_funcao_subfuncao.json",
         "sql_file": "saldocontabil_funcao_subfuncao.sql",
     },
     {
-        # Receita Orçamentária (Balanço Orçamentário)
         "file": "receita.json",
         "sql_file": "RECEITA.sql",
     },
     {
-        # Despesa Orçamentária — inclui dotação inicial + créditos adicionais (522110000-522199999)
-        # + execução: empenhada/liquidada/paga (classe 6)
         "file": "despesa.json",
         "sql_file": "DESPESA.sql",
     },
-    # Adicione mais queries aqui seguindo o mesmo padrão.
+    {
+        "file": "rcl.json",
+        "sql_file": "receita_RCL.sql",
+        "transform": "rcl",
+    },
 ]
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
-
 def serialize(value):
-    """Converte tipos Oracle não serializáveis em JSON."""
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, Decimal):
@@ -85,8 +69,7 @@ def serialize(value):
     return value
 
 
-def fetch(cursor, query: str) -> list[dict]:
-    """Executa query e retorna lista de dicionários."""
+def fetch(cursor, query):
     cursor.execute(query)
     columns = [col[0].lower() for col in cursor.description]
     return [
@@ -95,8 +78,7 @@ def fetch(cursor, query: str) -> list[dict]:
     ]
 
 
-def save_json(filename: str, data: list[dict]):
-    """Salva dados como JSON com metadados de atualização."""
+def save_json(filename, data):
     payload = {
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "total": len(data),
@@ -104,15 +86,10 @@ def save_json(filename: str, data: list[dict]):
     }
     path = OUTPUT_DIR / filename
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    log.info(f"  ✓ {filename} — {len(data)} registros salvos")
+    log.info(f"  {filename} -- {len(data)} registros salvos")
 
 
-def save_json_gz(filename: str, data: list[dict]):
-    """
-    Salva dados como JSON comprimido com gzip (compresslevel=9).
-    Gera <filename>.gz em data/gz/ para upload no GitHub Releases.
-    Redução típica: 70-85% do tamanho original.
-    """
+def save_json_gz(filename, data):
     payload = {
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "total": len(data),
@@ -124,47 +101,386 @@ def save_json_gz(filename: str, data: list[dict]):
     with gzip.open(path, "wb", compresslevel=9) as f:
         f.write(content)
     size_kb = path.stat().st_size / 1024
-    log.info(f"  ✓ {gz_filename} — {len(data)} registros, {size_kb:.1f} KB comprimido")
+    log.info(f"  {gz_filename} -- {len(data)} registros, {size_kb:.1f} KB comprimido")
 
 
-def read_sql(filename: str) -> str:
-    """
-    Lê arquivo .sql de data/queries/,
-    remove comentários de linha (--) e substitui {SCHEMA_ANO}.
-    """
+def read_sql(filename):
     path = QUERIES_DIR / filename
     if not path.exists():
-        raise FileNotFoundError(f"Arquivo SQL não encontrado: {path}")
+        raise FileNotFoundError(f"Arquivo SQL nao encontrado: {path}")
     sql = path.read_text(encoding="utf-8")
     lines = [line for line in sql.splitlines() if not line.strip().startswith("--")]
     return "\n".join(lines).replace("{SCHEMA_ANO}", SCHEMA_ANO).strip()
 
 
-def resolve_query(item: dict) -> str:
-    """Retorna o SQL lido do arquivo em data/queries/."""
+def resolve_query(item):
     return read_sql(item["sql_file"])
 
 
-# ── Oracle ─────────────────────────────────────────────────────────────────
+# RCL Aggregation
+# Regras: tools/regra_rcl.txt (ContDF/SEEC)
+# FCDF: data/UFIS-FCDFDespesadePessoal.xlsx (UFIS/SIAFE)
+
+FCDF_CLASS6_CONTAS = {622130300, 622130400, 622130500, 622130600, 622130700}
+
+
+def _rcl_class_orc(c, cofonte, cofontefederal):
+    if 11125000 <= c <= 11125099: return "iptu"
+    if 11130000 <= c <= 11139999: return "ir"
+    if 11125100 <= c <= 11125199: return "ipva"
+    if 11125200 <= c <= 11125299: return "itcd"
+    if 11125300 <= c <= 11125399: return "itbi"
+    if (11145010 <= c <= 11145099) or (11145200 <= c <= 11145299): return "icms"
+    if 11145100 <= c <= 11145199: return "iss"
+    if 11190000 <= c <= 11199999: return "outros_impostos"
+    if 11200000 <= c <= 11299999: return "taxas"
+    if 12000000 <= c <= 12999999: return "contribuicoes"
+    if 13200000 <= c <= 13299999: return "rend_aplic"
+    if (13100000 <= c <= 13199999) or (13300000 <= c <= 13999999): return "outras_patrimoniais"
+    if 14000000 <= c <= 14999999: return "agropecuaria"
+    if 15000000 <= c <= 15999999: return "industrial"
+    if 16000000 <= c <= 16999999: return "servicos"
+    if 17115000 <= c <= 17115099: return "fpe"
+    if 17115100 <= c <= 17115199: return "fpm"
+    if 17115200 <= c <= 17115299: return "itr_trans"
+    if 17115300 <= c <= 17115399: return "lc61"
+    if (17515000 <= c <= 17515099) or (17155200 <= c <= 17155299): return "fundeb_trans"
+    if (17115400 <= c <= 17155199) or (17155300 <= c <= 17514999) or (17515100 <= c <= 17999999):
+        return "outras_transf"
+    if 19000000 <= c <= 19999999: return "outras_correntes"
+    return None
+
+
+def _rcl_deducao(c):
+    if 12150000 <= c <= 12159999: return "contrib_servidor"
+    if 19990300 <= c <= 19990399: return "comp_financeira"
+    if 13210400 <= c <= 13210499: return "rend_prev"
+    if 17515000 <= c <= 17515099: return "ded_fundeb"
+    return None
+
+
+def _rcl_emenda(cofonte, cofontefederal):
+    if (732000000 <= cofonte <= 732999999 or
+            738000000 <= cofonte <= 738999999 or
+            706000000 <= cofonte <= 706999999):
+        return "emendas_ind"
+    if (733000000 <= cofonte <= 733999999 or
+            739000000 <= cofonte <= 739999999):
+        return "emendas_bancada"
+    if cofontefederal == 1604:
+        return "agentes_com"
+    return None
+
+
+def load_fcdf_data(base_dir):
+    path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
+    if not path.exists():
+        log.warning(f"Planilha FCDF nao encontrada: {path}")
+        return {"realizados": {}, "previsao": {}}
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        log.error("openpyxl nao instalado. Execute: pip install openpyxl")
+        return {"realizados": {}, "previsao": {}}
+    from collections import defaultdict
+    wb = load_workbook(path, read_only=True)
+    ws = wb.active
+    realizados = defaultdict(lambda: {"total": 0.0, "pessoal": 0.0})
+    previsao   = defaultdict(lambda: {"total": 0.0, "pessoal": 0.0})
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[2] is None:
+            continue
+        try:
+            conta  = int(row[2])
+            grupo  = int(row[4] or 0)
+            elem   = str(row[5]).strip() if row[5] is not None else ""
+            subit  = int(row[6]) if row[6] is not None else 0
+            mes    = int(row[7] or 0)
+            ano    = int(row[8] or 0)
+            vadeb  = float(row[9] or 0)
+            vacred = float(row[10] or 0)
+        except (ValueError, TypeError):
+            continue
+        if not mes or not ano:
+            continue
+        is_pessoal = (grupo == 1) or (grupo == 3 and elem == "85" and subit == 1)
+        sc = str(conta)
+        if sc.startswith("6") and conta in FCDF_CLASS6_CONTAS:
+            saldo = vacred - vadeb
+            realizados[(mes, ano)]["total"]   += saldo
+            if is_pessoal:
+                realizados[(mes, ano)]["pessoal"] += saldo
+        elif sc.startswith("5"):
+            saldo = vadeb - vacred
+            previsao[ano]["total"]   += saldo
+            if is_pessoal:
+                previsao[ano]["pessoal"] += saldo
+    wb.close()
+    log.info(f"  FCDF: {len(realizados)} meses realizados, {len(previsao)} anos previsao")
+    return {"realizados": dict(realizados), "previsao": dict(previsao)}
+
+
+def build_rcl_data(rows):
+    from collections import defaultdict
+    MESES_PT = ["jan","fev","mar","abr","mai","jun",
+                "jul","ago","set","out","nov","dez"]
+    ano_atual = datetime.now().year
+    PREV_EXCL = {521120101, 521220101, 521220201}
+    prev_receita  = defaultdict(float)
+    prev_deducoes = defaultdict(float)
+    prev_emendas  = defaultdict(float)
+    real_receita  = defaultdict(lambda: defaultdict(float))
+    real_deducoes = defaultdict(lambda: defaultdict(float))
+    real_emendas  = defaultdict(lambda: defaultdict(float))
+    meses_oracle  = set()
+
+    for r in rows:
+        saldo = float(r.get("saldo") or 0)
+        if not saldo:
+            continue
+        cc_raw = r.get("cocontacontabil")
+        cc = int(str(cc_raw).strip()) if cc_raw is not None else 0
+        class_orc_raw = r.get("class_orc") or ""
+        try:
+            c_int = int(str(class_orc_raw).strip())
+        except ValueError:
+            continue
+        if not str(class_orc_raw).strip().startswith("1"):
+            continue
+        mes = int(r.get("inmes") or 0)
+        ano = int(r.get("coexercicio") or 0)
+        if not mes or not ano:
+            continue
+        cofonte_raw   = r.get("cofonte")
+        cofederal_raw = r.get("cofontefederal")
+        try:
+            cofonte   = int(str(cofonte_raw).strip()) if cofonte_raw else 0
+            cofederal = int(str(cofederal_raw).strip()) if cofederal_raw else 0
+        except (ValueError, TypeError):
+            cofonte = cofederal = 0
+
+        is_prev = (521100000 <= cc <= 521299999)
+        is_real = (621200000 <= cc <= 621399999 and cc != 621310100)
+
+        if is_prev:
+            is_excl = (cc in PREV_EXCL)
+            if not is_excl:
+                key = _rcl_class_orc(c_int, cofonte, cofederal)
+                if key and ano == ano_atual:
+                    prev_receita[key] += saldo
+                ded = _rcl_deducao(c_int)
+                # ded_fundeb na previsao vem APENAS das contas excluidas (PREV_EXCL)
+                if ded and ded != "ded_fundeb" and ano == ano_atual:
+                    prev_deducoes[ded] += saldo
+                em = _rcl_emenda(cofonte, cofederal)
+                if em and ano == ano_atual:
+                    prev_emendas[em] += saldo
+            else:
+                if 17515000 <= c_int <= 17515099 and ano == ano_atual:
+                    prev_deducoes["ded_fundeb"] += saldo
+        elif is_real:
+            meses_oracle.add((mes, ano))
+            key = _rcl_class_orc(c_int, cofonte, cofederal)
+            if key:
+                real_receita[(mes, ano)][key] += saldo
+            ded = _rcl_deducao(c_int)
+            if ded:
+                real_deducoes[(mes, ano)][ded] += saldo
+            em = _rcl_emenda(cofonte, cofederal)
+            if em:
+                real_emendas[(mes, ano)][em] += saldo
+
+    if not meses_oracle:
+        log.warning("RCL: nenhum dado realizado encontrado no SQL.")
+        return {}
+
+    max_mes, max_ano = max(meses_oracle)
+    if max_mes > 1:
+        ref_mes, ref_ano = max_mes - 1, max_ano
+    else:
+        ref_mes, ref_ano = 12, max_ano - 1
+
+    ultimos12 = []
+    m, a = ref_mes, ref_ano
+    for _ in range(12):
+        ultimos12.insert(0, (m, a))
+        m -= 1
+        if m == 0:
+            m = 12
+            a -= 1
+
+    colunas = [f"{m},{a}" for m, a in ultimos12]
+    rotulos = [f"{MESES_PT[m-1]}/{str(a)[2:]}" for m, a in ultimos12]
+    log.info(f"  RCL: colunas {rotulos[0]} -> {rotulos[-1]}")
+
+    def monta_linha(src, key):
+        linha, total = {}, 0.0
+        for m, a in ultimos12:
+            col = f"{m},{a}"
+            v = src.get((m, a), {}).get(key, 0.0)
+            linha[col] = v
+            total += v
+        linha["_total"] = total
+        return linha
+
+    def soma_linhas(linhas_dict, keys):
+        linha, total = {}, 0.0
+        for col in colunas:
+            v = sum(linhas_dict.get(k, {}).get(col, 0.0) for k in keys)
+            linha[col] = v
+            total += v
+        linha["_total"] = total
+        return linha
+
+    KEYS_ATOMICAS = [
+        "iptu","ir","ipva","itcd","itbi","icms","iss","outros_impostos",
+        "taxas","itr","contribuicoes","rend_aplic","outras_patrimoniais",
+        "agropecuaria","industrial","servicos",
+        "fpe","fpm","itr_trans","lc61","fundeb_trans","outras_transf",
+        "outras_correntes",
+    ]
+    IMPOSTOS_KEYS = {"iptu","ir","ipva","itcd","itbi","icms","iss","outros_impostos","taxas","itr"}
+    PATRIM_KEYS   = {"rend_aplic","outras_patrimoniais"}
+    TRANSF_KEYS   = {"fpe","fpm","itr_trans","lc61","fundeb_trans","outras_transf"}
+    CORR_KEYS     = IMPOSTOS_KEYS | PATRIM_KEYS | TRANSF_KEYS | {
+                        "contribuicoes","agropecuaria","industrial","servicos","outras_correntes"}
+
+    linhas = {}
+    for key in KEYS_ATOMICAS:
+        linhas[key] = monta_linha(real_receita, key)
+    linhas["itr"] = {col: 0.0 for col in colunas}
+    linhas["itr"]["_total"] = 0.0
+
+    linhas["impostos"]           = soma_linhas(linhas, IMPOSTOS_KEYS)
+    linhas["patrimonial"]        = soma_linhas(linhas, PATRIM_KEYS)
+    linhas["transferencias"]     = soma_linhas(linhas, TRANSF_KEYS)
+    linhas["receitas_correntes"] = soma_linhas(linhas, CORR_KEYS)
+
+    for dk in ("contrib_servidor","comp_financeira","rend_prev","ded_fundeb"):
+        linhas[dk] = monta_linha(real_deducoes, dk)
+    linhas["deducoes"] = soma_linhas(linhas,
+        {"contrib_servidor","comp_financeira","rend_prev","ded_fundeb"})
+
+    fcdf      = load_fcdf_data(BASE_DIR)
+    real_fcdf = fcdf.get("realizados", {})
+    prev_fcdf = fcdf.get("previsao", {})
+
+    def monta_fcdf(campo):
+        linha, total = {}, 0.0
+        for m, a in ultimos12:
+            col = f"{m},{a}"
+            v = real_fcdf.get((m, a), {}).get(campo, 0.0)
+            linha[col] = v
+            total += v
+        linha["_total"] = total
+        return linha
+
+    linhas["fcdf_total"]   = monta_fcdf("total")
+    linhas["fcdf_pessoal"] = monta_fcdf("pessoal")
+    linhas["fcdf"] = {}
+    for col in colunas:
+        linhas["fcdf"][col] = (linhas["fcdf_total"].get(col, 0)
+                               - linhas["fcdf_pessoal"].get(col, 0))
+    linhas["fcdf"]["_total"] = (linhas["fcdf_total"]["_total"]
+                                - linhas["fcdf_pessoal"]["_total"])
+
+    linhas["rcl"] = {}
+    for col in colunas:
+        linhas["rcl"][col] = (linhas["receitas_correntes"].get(col, 0)
+                              - linhas["deducoes"].get(col, 0)
+                              + linhas["fcdf"].get(col, 0))
+    linhas["rcl"]["_total"] = (linhas["receitas_correntes"]["_total"]
+                               - linhas["deducoes"]["_total"]
+                               + linhas["fcdf"]["_total"])
+
+    for em in ("emendas_ind","emendas_bancada","agentes_com"):
+        linhas[em] = monta_linha(real_emendas, em)
+    linhas["outras_ded"] = {col: 0.0 for col in colunas}
+    linhas["outras_ded"]["_total"] = 0.0
+
+    linhas["rcl_endiv"] = {}
+    for col in colunas:
+        linhas["rcl_endiv"][col] = (linhas["rcl"].get(col, 0)
+                                    - linhas["emendas_ind"].get(col, 0))
+    linhas["rcl_endiv"]["_total"] = (linhas["rcl"]["_total"]
+                                     - linhas["emendas_ind"]["_total"])
+
+    linhas["rcl_pessoal"] = {}
+    for col in colunas:
+        linhas["rcl_pessoal"][col] = (
+            linhas["rcl_endiv"].get(col, 0)
+            - linhas["emendas_bancada"].get(col, 0)
+            - linhas["agentes_com"].get(col, 0)
+            - linhas["outras_ded"].get(col, 0))
+    linhas["rcl_pessoal"]["_total"] = (
+        linhas["rcl_endiv"]["_total"]
+        - linhas["emendas_bancada"]["_total"]
+        - linhas["agentes_com"]["_total"]
+        - linhas["outras_ded"]["_total"])
+
+    def pv(key): return prev_receita.get(key, 0.0)
+    def pv_g(keys): return sum(prev_receita.get(k, 0.0) for k in keys)
+
+    previsao = {}
+    for k in KEYS_ATOMICAS:
+        previsao[k] = pv(k)
+    previsao["itr"]                = 0.0
+    previsao["impostos"]           = pv_g(IMPOSTOS_KEYS)
+    previsao["patrimonial"]        = pv_g(PATRIM_KEYS)
+    previsao["transferencias"]     = pv_g(TRANSF_KEYS)
+    previsao["receitas_correntes"] = pv_g(CORR_KEYS)
+
+    for dk in ("contrib_servidor","comp_financeira","rend_prev","ded_fundeb"):
+        previsao[dk] = prev_deducoes.get(dk, 0.0)
+    previsao["deducoes"] = sum(prev_deducoes.values())
+
+    pf = prev_fcdf.get(ano_atual, {})
+    previsao["fcdf_total"]   = pf.get("total", 0.0)
+    previsao["fcdf_pessoal"] = pf.get("pessoal", 0.0)
+    previsao["fcdf"]         = previsao["fcdf_total"] - previsao["fcdf_pessoal"]
+
+    previsao["rcl"] = (previsao["receitas_correntes"]
+                       - previsao["deducoes"]
+                       + previsao["fcdf"])
+
+    for em in ("emendas_ind","emendas_bancada","agentes_com"):
+        previsao[em] = prev_emendas.get(em, 0.0)
+    previsao["outras_ded"] = 0.0
+
+    previsao["rcl_endiv"]   = previsao["rcl"] - previsao["emendas_ind"]
+    previsao["rcl_pessoal"] = (previsao["rcl_endiv"]
+                               - previsao["emendas_bancada"]
+                               - previsao["agentes_com"]
+                               - previsao["outras_ded"])
+
+    return {
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+        "ano": ano_atual,
+        "colunas": colunas,
+        "rotulos": rotulos,
+        "linhas": linhas,
+        "previsao": previsao,
+    }
+
+
+def save_rcl_gz(D_obj):
+    content = json.dumps(D_obj, ensure_ascii=False, separators=(",",":")).encode("utf-8")
+    gz_path = GZ_DIR / "rcl.json.gz"
+    with gzip.open(gz_path, "wb", compresslevel=9) as f:
+        f.write(content)
+    size_kb = gz_path.stat().st_size / 1024
+    log.info(f"  rcl.json.gz -- {len(D_obj.get('colunas', []))} meses, {size_kb:.1f} KB")
+
 
 def init_oracle():
-    """
-    Inicializa oracledb.
-    - Thick mode se ORACLE_CLIENT_PATH estiver definido no .env
-    - Thin mode caso contrário (Oracle 12.1+, sem client instalado)
-    """
     import oracledb
-
     if CLIENT_PATH:
-        log.info(f"Inicializando thick mode → {CLIENT_PATH}")
+        log.info(f"Inicializando thick mode -> {CLIENT_PATH}")
         oracledb.init_oracle_client(lib_dir=CLIENT_PATH)
     else:
         log.info("Usando thin mode (sem Oracle Client local)")
-
     return oracledb
 
-
-# ── Pipeline principal ─────────────────────────────────────────────────────
 
 def run():
     try:
@@ -175,33 +491,34 @@ def run():
     if not DB_USER or not DB_PASSWORD:
         raise ValueError("DB_USER e DB_PASSWORD precisam estar definidos no .env")
 
-    log.info(f"Conectando ao Oracle → {DB_DSN}  [schema: {SCHEMA_ANO}]")
+    log.info(f"Conectando ao Oracle -> {DB_DSN}  [schema: {SCHEMA_ANO}]")
 
     pool = oracledb.create_pool(
-        user=DB_USER,
-        password=DB_PASSWORD,
-        dsn=DB_DSN,
-        min=DB_MIN,
-        max=DB_MAX,
-        increment=DB_INC,
+        user=DB_USER, password=DB_PASSWORD, dsn=DB_DSN,
+        min=DB_MIN, max=DB_MAX, increment=DB_INC,
     )
 
     with pool.acquire() as conn:
-        log.info("Conexão estabelecida. Iniciando extração...")
+        log.info("Conexao estabelecida. Iniciando extracao...")
         with conn.cursor() as cur:
             for item in QUERIES:
-                log.info(f"Extraindo → {item['file']}")
+                log.info(f"Extraindo -> {item['file']}")
                 try:
                     data = fetch(cur, resolve_query(item))
-                    save_json(item["file"], data)
-                    save_json_gz(item["file"], data)
+                    if item.get("transform") == "rcl":
+                        D_obj = build_rcl_data(data)
+                        save_rcl_gz(D_obj)
+                        save_json(item["file"], data)
+                    else:
+                        save_json(item["file"], data)
+                        save_json_gz(item["file"], data)
                 except Exception as e:
-                    log.error(f"  ✗ Erro em {item['file']}: {type(e).__name__}: {e}")
+                    log.error(f"  Erro em {item['file']}: {type(e).__name__}: {e}")
                     import traceback
                     traceback.print_exc()
 
     pool.close()
-    log.info("ETL concluído com sucesso.")
+    log.info("ETL concluido com sucesso.")
 
 
 if __name__ == "__main__":
