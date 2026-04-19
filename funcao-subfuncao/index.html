@@ -109,6 +109,7 @@
 <body>
 
 <header>
+  <img id="brasao" alt="Brasão do DF" style="height:52px;">
   <h1>Saldo Contábil por Função/Subfunção</h1>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
     <small id="atualizado">Carregando…</small>
@@ -245,5 +246,14 @@
   }
 </script>
 
+<script>
+(function() {
+    var img = document.getElementById('brasao');
+    if (img) {
+        img.src = '../tools/Brasão_do_Distrito_Federal_Brasil.png';
+        img.onerror = function() { img.style.display = 'none'; };
+    }
+})();
+</script>
 </body>
 </html>
