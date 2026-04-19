@@ -124,6 +124,44 @@ Configure em Settings → Secrets → Actions:
 
 ---
 
+## Colaboradores — como contribuir
+
+Colaboradores não precisam de acesso à pasta local do administrador. O fluxo é:
+
+### 1. Clonar o repositório
+
+```cmd
+git clone https://github.com/contadoriadf/dashboard.git
+```
+
+Isso baixa uma cópia completa do projeto para a máquina do colaborador.
+
+### 2. Desenvolver localmente
+
+Criar a pasta do novo dashboard, desenvolver o `index.html` seguindo o padrão visual do projeto e adicionar a query SQL em `data/queries/`.
+
+### 3. Enviar para o GitHub
+
+```cmd
+git add .
+git commit -m "feat: novo dashboard RCL"
+git push origin main
+```
+
+O GitHub centraliza tudo. Ninguém acessa a pasta do outro — cada um trabalha na sua cópia local e o repositório é o ponto de encontro.
+
+### 4. Sincronizar após contribuição de outro colaborador
+
+```cmd
+git pull origin main
+```
+
+### Conceder acesso a colaboradores
+
+Acesse `github.com/contadoriadf/dashboard` → **Settings → Collaborators → Add people** e adicione o usuário GitHub do colaborador.
+
+---
+
 ## Reverter alterações com Git
 
 ### Ver histórico de commits
