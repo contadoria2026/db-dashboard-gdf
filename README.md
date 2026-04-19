@@ -124,6 +124,57 @@ Configure em Settings → Secrets → Actions:
 
 ---
 
+## Reverter alterações com Git
+
+### Ver histórico de commits
+
+```cmd
+git log --oneline
+```
+
+Exemplo de saída:
+```
+a1b2c3d fix: remove backslash antes do DOCTYPE
+e4f5g6h feat: brasão via tools/ em todos os dashboards
+f7h8i9j feat: navegação hierárquica - botão voltar por nível
+```
+
+### Recuperar um arquivo específico de um commit anterior
+
+```cmd
+git checkout <hash> -- nome-do-arquivo.html
+```
+
+Exemplo — restaurar a despesa para como estava em `e4f5g6h`:
+```cmd
+git checkout e4f5g6h -- balanco_orcamentario/despesa_orcamentaria.html
+```
+
+Após recuperar, commitar novamente:
+```cmd
+git add .
+git commit -m "fix: reverte arquivo para versão anterior"
+git push origin main
+```
+
+### Desfazer o último commit (mantendo os arquivos)
+
+```cmd
+git revert HEAD
+git push origin main
+```
+
+### Voltar tudo para um commit específico (⚠️ irreversível)
+
+```cmd
+git reset --hard <hash>
+git push origin main --force
+```
+
+> **Atenção:** `reset --hard` apaga permanentemente tudo que veio após aquele commit. Use com cautela.
+
+---
+
 ## Adicionar novo dashboard
 
 1. Crie uma pasta para o novo demonstrativo (ex: `resultado-primario/`)
