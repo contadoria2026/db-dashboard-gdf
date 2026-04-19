@@ -2,5 +2,11 @@
 __pycache__/
 *.pyc
 
-# JSONs grandes — não subir ao GitHub (ultrapassam 100 MB)
-data/despesa.json 
+# JSONs locais — não subir ao GitHub
+data/despesa.json
+data/rcl.json
+data/receita.json
+data/saldo_funcao_subfuncao.json
+
+# Planilha FCDF — dado local, não versionar
+data/UFIS-FCDFDespesadePessoal.xlsx
