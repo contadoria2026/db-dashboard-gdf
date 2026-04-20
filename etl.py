@@ -173,7 +173,12 @@ def _rcl_emenda(cofonte, cofontefederal):
 
 
 def load_fcdf_data(base_dir):
-    path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
+    # Prioridade: variavel de ambiente FCDF_PATH (usada no CI/Actions)
+    env_path = os.getenv("FCDF_PATH", "").strip()
+    if env_path:
+        path = Path(env_path)
+    else:
+        path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
     if not path.exists():
         log.warning(f"Planilha FCDF nao encontrada: {path}")
         return {"realizados": {}, "previsao": {}}
@@ -521,13 +526,4 @@ def run():
                         save_json(item["file"], data)
                         save_json_gz(item["file"], data)
                 except Exception as e:
-                    log.error(f"  Erro em {item['file']}: {type(e).__name__}: {e}")
-                    import traceback
-                    traceback.print_exc()
-
-    pool.close()
-    log.info("ETL concluido com sucesso.")
-
-
-if __name__ == "__main__":
-    run()
+                    log.error(f"  Erro em {item['file']}: {type(e).__name__}: {e}

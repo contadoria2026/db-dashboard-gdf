@@ -19,18 +19,6 @@ jobs:
       - name: Instalar dependencias Python
         run: py -m pip install -r requirements.txt
 
-      - name: Copiar planilha FCDF para workspace
-        shell: powershell
-        run: |
-          $src = "C:\Users\james.coelho\Documents\AUTOMATIZAÇÃO RELATÓRIOS\DB_JasonGitHub\data\UFIS-FCDFDespesadePessoal.xlsx"
-          $dst = "$env:GITHUB_WORKSPACE\data\UFIS-FCDFDespesadePessoal.xlsx"
-          if (Test-Path $src) {
-            Copy-Item $src $dst
-            Write-Host "FCDF copiado: $dst"
-          } else {
-            Write-Host "AVISO: planilha FCDF nao encontrada em $src"
-          }
-
       - name: Rodar ETL
         env:
           DB_USER:                  ${{ secrets.DB_USER }}
@@ -40,6 +28,7 @@ jobs:
           DB_MAX_CONNECTIONS:       ${{ secrets.DB_MAX_CONNECTIONS }}
           DB_INCREMENT_CONNECTIONS: ${{ secrets.DB_INCREMENT_CONNECTIONS }}
           ORACLE_CLIENT_PATH:       ${{ secrets.ORACLE_CLIENT_PATH }}
+          FCDF_PATH:                ${{ secrets.FCDF_PATH }}
         run: py etl.py
 
       - name: Commitar JSON.GZ no repositorio
