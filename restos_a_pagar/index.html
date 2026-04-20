@@ -81,7 +81,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 /* ═══ CHARTS ═══ */
 .chart-full{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px;margin-bottom:20px;transition:box-shadow .2s}
 .chart-full:hover{box-shadow:var(--shadow-md)}
-.charts-row-2{display:grid;grid-template-columns:1fr 1fr 280px;gap:16px;margin-bottom:20px}
+.charts-row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .chart-panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px;transition:box-shadow .2s}
 .chart-panel:hover{box-shadow:var(--shadow-md)}
 .chart-panel-title{font-size:.82rem;font-weight:700;color:var(--accent-900);margin-bottom:4px}
@@ -119,7 +119,7 @@ table.taxa-canc tr:hover td{background:var(--accent-50)}
 .footer{text-align:center;padding:16px 28px;font-size:.68rem;color:#94a3b8;border-top:1px solid #e2e8f0;background:#fff;line-height:1.6;margin-top:8px}
 
 /* ═══ RESPONSIVE ═══ */
-@media(max-width:1200px){.kpi-row{grid-template-columns:repeat(2,1fr)}.charts-row-2{grid-template-columns:1fr 1fr}}
+@media(max-width:1200px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.charts-row-2{grid-template-columns:1fr}}
 @media(max-width:768px){.kpi-row{grid-template-columns:1fr}.kpi-sub-row{grid-template-columns:1fr 1fr}.header{padding:12px 16px;flex-wrap:wrap}.content{padding:12px 16px}.filter-bar{padding:10px 16px}}
 @media print{.filter-bar{display:none}.kpi-card,.chart-panel,.chart-full,.table-panel{break-inside:avoid}.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
@@ -274,12 +274,6 @@ table.taxa-canc tr:hover td{background:var(--accent-50)}
       <div class="chart-panel-subtitle" id="sub-cat">Não Processados vs Processados — Inscrito e a Pagar (R$ Milhões)</div>
       <div id="chart-cat" style="width:100%;height:320px;"></div>
     </div>
-    <div class="chart-panel" style="display:flex;flex-direction:column;align-items:center;">
-      <div class="chart-panel-title" style="align-self:flex-start;">Taxa de Cancelamento RPNP</div>
-      <div class="chart-panel-subtitle" style="align-self:flex-start;" id="sub-gauge">RPNP Cancelado / RPNP Inscrito</div>
-      <div id="chart-gauge" style="width:100%;height:260px;"></div>
-      <div id="gauge-legenda" style="font-size:.7rem;color:#64748b;text-align:center;margin-top:4px;line-height:1.6;"></div>
-    </div>
   </div>
 
   <!-- Table -->
@@ -334,7 +328,7 @@ const CC = {
 // ═══════════════════════════════════════════════════════════════
 let ALL   = [];   // todos os registros
 let ANOS  = [];   // anos disponíveis em ordem crescente (para o gráfico)
-let cAnos, cCat, cGauge;
+let cAnos, cCat;
 
 // ═══════════════════════════════════════════════════════════════
 // FILTRO
@@ -705,7 +699,6 @@ function renderAll() {
   renderChartAnos();
   renderTaxaCancelamento();
   renderChartCat();
-  renderChartGauge(m);
   renderTable();
 
   document.getElementById('sub-cat').textContent = 'RPNP vs RPP — ' + anoLabel + ' (R$ Milhões)';
@@ -762,11 +755,10 @@ function init(json) {
 
   buildFilters(ALL);
 
-  cAnos  = echarts.init(document.getElementById('chart-anos'));
-  cCat   = echarts.init(document.getElementById('chart-cat'));
-  cGauge = echarts.init(document.getElementById('chart-gauge'));
+  cAnos = echarts.init(document.getElementById('chart-anos'));
+  cCat  = echarts.init(document.getElementById('chart-cat'));
 
-  window.addEventListener('resize', () => { cAnos.resize(); cCat.resize(); cGauge.resize(); });
+  window.addEventListener('resize', () => { cAnos.resize(); cCat.resize(); });
 
   renderAll();
 }
