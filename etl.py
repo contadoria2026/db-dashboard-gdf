@@ -294,11 +294,19 @@ def build_rcl_data(rows):
         log.warning("RCL: nenhum dado realizado encontrado no SQL.")
         return {}
 
-    max_mes, max_ano = max(meses_oracle)
-    if max_mes > 1:
-        ref_mes, ref_ano = max_mes - 1, max_ano
+    # ref_mes/ref_ano: ultimo mes fechado conforme {SCHEMA_ANO}.mesfechado.
+    # max_mes_fechado vem como coluna escalar no SQL (mesmo valor em todas as linhas).
+    # Fallback: se NULL (mesfechado vazio no ano corrente), usa max dos realizados Oracle.
+    mmf_raw = next((r.get("max_mes_fechado") for r in rows if r.get("max_mes_fechado") is not None), None)
+    if mmf_raw is not None and 1 <= int(mmf_raw) <= 12:
+        ref_mes = int(mmf_raw)
+        ref_ano = ano_atual
+        log.info(f"  RCL: ultimo mes fechado (mesfechado) = {ref_mes:02d}/{ref_ano}")
     else:
-        ref_mes, ref_ano = 12, max_ano - 1
+        # Fallback: max dos realizados Oracle
+        max_mes, max_ano = max(meses_oracle)
+        ref_mes, ref_ano = max_mes, max_ano
+        log.warning(f"  RCL: mesfechado vazio/invalido, fallback Oracle max = {ref_mes:02d}/{ref_ano}")
 
     ultimos12 = []
     m, a = ref_mes, ref_ano

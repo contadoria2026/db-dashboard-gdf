@@ -12,6 +12,9 @@
 --             classificar cada linha nas categorias do demonstrativo.
 -- cofonte e cofontefederal — usados para apurar emendas individuais (V),
 --             emendas de bancada (VII) e agentes comunitários (VIII).
+-- max_mes_fechado — max(inmes) de {SCHEMA_ANO}.mesfechado (inmes 1-12).
+--   Define o último mês da janela de 12 colunas do demonstrativo.
+--   NULL quando não há meses fechados no exercício corrente (fallback no Python).
 
 SELECT
   s.coexercicio,
@@ -21,6 +24,9 @@ SELECT
   s.inmes,
   s.cofonte,
   f.cofontefederal,
+  (SELECT MAX(m.inmes)
+     FROM {SCHEMA_ANO}.mesfechado m
+    WHERE m.inmes BETWEEN 1 AND 12) AS max_mes_fechado,
   CASE
     WHEN s.cocontacontabil BETWEEN 521100000 AND 521299999
          THEN (s.vadebito - s.vacredito)
