@@ -104,6 +104,17 @@ table.rap td.pct{text-align:center;font-weight:600}
 table.rap tr.total-row td{background:var(--accent-100);font-weight:700;color:var(--accent-900);border-top:2px solid var(--accent-300)}
 table.rap tr:hover:not(.total-row) td{background:var(--accent-50)}
 
+/* ═══ TABELA TAXA CANCELAMENTO ═══ */
+table.taxa-canc{width:100%;border-collapse:collapse;font-size:.75rem}
+table.taxa-canc th{background:var(--accent-50);color:var(--accent-900);padding:9px 14px;border-bottom:2px solid var(--accent-200);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;position:sticky;top:0;z-index:1}
+table.taxa-canc th:first-child{text-align:left}
+table.taxa-canc th:not(:first-child){text-align:right}
+table.taxa-canc td{padding:8px 14px;border-bottom:1px solid #f1f5f9;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.taxa-canc td:first-child{text-align:left;font-weight:700;color:var(--accent-900)}
+table.taxa-canc td:not(:first-child){text-align:right}
+table.taxa-canc td.pct{font-weight:700}
+table.taxa-canc tr:hover td{background:var(--accent-50)}
+
 /* ═══ FOOTER ═══ */
 .footer{text-align:center;padding:16px 28px;font-size:.68rem;color:#94a3b8;border-top:1px solid #e2e8f0;background:#fff;line-height:1.6;margin-top:8px}
 
@@ -242,9 +253,21 @@ table.rap tr:hover:not(.total-row) td{background:var(--accent-50)}
   <!-- Charts Row 2 -->
   <div class="charts-row-2">
     <div class="chart-panel">
-      <div class="chart-panel-title">Saldo a Pagar por GND</div>
-      <div class="chart-panel-subtitle" id="sub-gnd">RAP a Pagar por Grupo de Natureza de Despesa (R$ Milhões)</div>
-      <div id="chart-gnd" style="width:100%;height:320px;"></div>
+      <div class="chart-panel-title">Taxa de Cancelamento — RPNP</div>
+      <div class="chart-panel-subtitle">RPNP Cancelado / RPNP Inscrito por exercício</div>
+      <div class="table-wrap" style="max-height:320px;">
+        <table class="taxa-canc">
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th>RPNP Inscrito</th>
+              <th>RPNP Cancelado</th>
+              <th>Cancelado/Inscrito</th>
+            </tr>
+          </thead>
+          <tbody id="taxa-body"></tbody>
+        </table>
+      </div>
     </div>
     <div class="chart-panel">
       <div class="chart-panel-title">RPNP × RPP — Composição</div>
@@ -311,7 +334,7 @@ const CC = {
 // ═══════════════════════════════════════════════════════════════
 let ALL   = [];   // todos os registros
 let ANOS  = [];   // anos disponíveis em ordem crescente (para o gráfico)
-let cAnos, cGnd, cCat, cGauge;
+let cAnos, cCat, cGauge;
 
 // ═══════════════════════════════════════════════════════════════
 // FILTRO
@@ -477,44 +500,44 @@ function renderChartAnos() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// RENDER GRÁFICO: POR GND
+// RENDER TABELA: TAXA DE CANCELAMENTO RPNP POR EXERCÍCIO
 // ═══════════════════════════════════════════════════════════════
-function renderChartGnd() {
-  const recs    = filtered();
-  const maxIm   = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
-  const rMx     = recs.filter(r => r.inmes === maxIm);
-  const allAPagar = new Set([...CC.rpnpAPagar, ...CC.rppAPagar]);
-
-  const byGnd = {};
-  for (const r of rMx) {
-    if (!allAPagar.has(r.cocontacontabil)) continue;
-    const key = r.gnd || '?';
-    if (!byGnd[key]) byGnd[key] = { label: (r.nognd || 'GND ' + key).trim(), val: 0 };
-    byGnd[key].val += r.saldo;
+function renderTaxaCancelamento() {
+  function fmtR(v) {
+    return v == null || isNaN(v)
+      ? '–'
+      : Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  }
+  function fmtP2(v) {
+    return v == null || isNaN(v)
+      ? '–'
+      : v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
   }
 
-  const entries = Object.entries(byGnd).filter(([,v]) => v.val > 0).sort((a,b) => b[1].val - a[1].val);
-  const cores = ['#006633','#2e7d32','#388e3c','#43a047','#66bb6a','#81c784','#a5d6a7','#1565c0','#0288d1'];
+  const frags = ANOS.map(ano => {
+    const recs  = filtered(ano);
+    const r0    = recs.filter(r => r.inmes === 0);
+    const maxIm = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
+    const rMx   = recs.filter(r => r.inmes === maxIm);
 
-  const nomes = entries.map(([,v]) => v.label.length > 35 ? v.label.slice(0,35)+'…' : v.label);
-  const vals  = entries.map(([,v]) => fmtMi(v.val));
+    function sum(arr, contas) {
+      return arr.filter(r => contas.has(r.cocontacontabil)).reduce((a, r) => a + r.saldo, 0);
+    }
 
-  cGnd.setOption({
-    tooltip: {
-      trigger: 'axis',
-      formatter: p => '<strong>' + p[0].name + '</strong><br/>R$ ' +
-        p[0].value.toLocaleString('pt-BR',{minimumFractionDigits:1}) + ' mi',
-    },
-    grid: { left: 230, right: 80, top: 10, bottom: 20 },
-    xAxis: { type: 'value', axisLabel: { fontSize: 10, formatter: v => v.toLocaleString('pt-BR') + ' mi' }, splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } } },
-    yAxis: { type: 'category', data: nomes.slice().reverse(), axisLabel: { fontSize: 10, fontFamily: 'Inter', width: 220, overflow: 'truncate' } },
-    series: [{
-      type: 'bar', barMaxWidth: 28,
-      data: vals.slice().reverse().map((v, i) => ({ value: v, itemStyle: { color: cores[i % cores.length] } })),
-      label: { show: true, position: 'right', fontSize: 10, formatter: p => 'R$ ' + p.value.toLocaleString('pt-BR',{minimumFractionDigits:1}) + ' mi' },
-    }],
-    animationDuration: 600,
-  }, true);
+    const inscrito  = sum(r0,  CC.rpnpInscrito);
+    const cancelado = sum(rMx, CC.rpnpCancelado);
+    const pct       = inscrito > 0 ? (cancelado / inscrito * 100) : 0;
+    const cor       = pct <= 10 ? '#16a34a' : pct <= 25 ? '#d97706' : '#dc2626';
+
+    return `<tr>
+      <td>${ano}</td>
+      <td>${fmtR(inscrito)}</td>
+      <td>${fmtR(cancelado)}</td>
+      <td class="pct" style="color:${cor}">${fmtP2(pct)}</td>
+    </tr>`;
+  });
+
+  document.getElementById('taxa-body').innerHTML = frags.join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -680,12 +703,11 @@ function renderAll() {
 
   renderKPIs(m);
   renderChartAnos();
-  renderChartGnd();
+  renderTaxaCancelamento();
   renderChartCat();
   renderChartGauge(m);
   renderTable();
 
-  document.getElementById('sub-gnd').textContent = 'RAP a Pagar por GND — ' + anoLabel + ' (R$ Milhões)';
   document.getElementById('sub-cat').textContent = 'RPNP vs RPP — ' + anoLabel + ' (R$ Milhões)';
 }
 
@@ -741,11 +763,10 @@ function init(json) {
   buildFilters(ALL);
 
   cAnos  = echarts.init(document.getElementById('chart-anos'));
-  cGnd   = echarts.init(document.getElementById('chart-gnd'));
   cCat   = echarts.init(document.getElementById('chart-cat'));
   cGauge = echarts.init(document.getElementById('chart-gauge'));
 
-  window.addEventListener('resize', () => { cAnos.resize(); cGnd.resize(); cCat.resize(); cGauge.resize(); });
+  window.addEventListener('resize', () => { cAnos.resize(); cCat.resize(); cGauge.resize(); });
 
   renderAll();
 }
