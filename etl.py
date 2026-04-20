@@ -58,6 +58,11 @@ QUERIES = [
         "sql_file": "receita_RCL.sql",
         "transform": "rcl",
     },
+    {
+        "file": "restos_a_pagar.json",
+        "sql_file": "restos_a_pagar.sql",
+        "transform": "restos_a_pagar",
+    },
 ]
 
 
@@ -471,6 +476,71 @@ def build_rcl_data(rows):
     }
 
 
+def build_restos_a_pagar_data(rows):
+    """
+    Agrega as linhas brutas do SQL por (ano, coug, cocontacontabil, cat, gnd, inmes)
+    e retorna lista de registros prontos para o dashboard.
+    Saldo = VACREDITO - VADEBITO (contas classe 6 de execução de RAP).
+    """
+    agg  = {}   # chave -> saldo acumulado
+    meta = {}   # chave -> campos descritivos
+
+    for r in rows:
+        try:
+            cc    = int(str(r.get("cocontacontabil") or 0).strip())
+            saldo = float(r.get("vacredito") or 0) - float(r.get("vadebito") or 0)
+            inmes = int(r.get("inmes") or 0)
+            ano   = int(r.get("ano") or 0)
+        except (ValueError, TypeError):
+            continue
+        if not ano:
+            continue
+
+        coug = str(r.get("coug") or "").strip()
+        cat  = str(r.get("cocategoriaeconomica") or "").strip()
+        gnd  = str(r.get("cognd") or "").strip()
+        key  = (ano, coug, cc, cat, gnd, inmes)
+
+        agg[key]  = agg.get(key, 0.0) + saldo
+        meta[key] = {
+            "noug":  str(r.get("noug")  or "").strip(),
+            "nocat": str(r.get("nocategoriaeconomica") or "").strip(),
+            "nognd": str(r.get("nognd") or "").strip(),
+        }
+
+    registros = []
+    for (ano, coug, cc, cat, gnd, inmes), saldo in agg.items():
+        m = meta[(ano, coug, cc, cat, gnd, inmes)]
+        registros.append({
+            "ano":             ano,
+            "coug":            coug,
+            "noug":            m["noug"],
+            "cocontacontabil": cc,
+            "cat":             cat,
+            "nocat":           m["nocat"],
+            "gnd":             gnd,
+            "nognd":           m["nognd"],
+            "saldo":           round(saldo, 2),
+            "inmes":           inmes,
+        })
+
+    log.info(f"  Restos a Pagar: {len(registros)} registros agregados")
+    return registros
+
+
+def save_restos_a_pagar_gz(registros):
+    payload = {
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+        "registros": registros,
+    }
+    content = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    gz_path = GZ_DIR / "restos_a_pagar.json.gz"
+    with gzip.open(gz_path, "wb", compresslevel=9) as f:
+        f.write(content)
+    size_kb = gz_path.stat().st_size / 1024
+    log.info(f"  restos_a_pagar.json.gz -- {len(registros)} registros, {size_kb:.1f} KB")
+
+
 def save_rcl_gz(D_obj):
     content = json.dumps(D_obj, ensure_ascii=False, separators=(",",":")).encode("utf-8")
     gz_path = GZ_DIR / "rcl.json.gz"
@@ -516,6 +586,10 @@ def run():
                     if item.get("transform") == "rcl":
                         D_obj = build_rcl_data(data)
                         save_rcl_gz(D_obj)
+                        save_json(item["file"], data)
+                    elif item.get("transform") == "restos_a_pagar":
+                        registros = build_restos_a_pagar_data(data)
+                        save_restos_a_pagar_gz(registros)
                         save_json(item["file"], data)
                     else:
                         save_json(item["file"], data)
