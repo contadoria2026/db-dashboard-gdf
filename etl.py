@@ -526,4 +526,13 @@ def run():
                         save_json(item["file"], data)
                         save_json_gz(item["file"], data)
                 except Exception as e:
-                    log.error(f"  Erro em {item['file']}: {type(e).__name__}: {e}
+                    log.error(f"  Erro em {item['file']}: {type(e).__name__}: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+    pool.close()
+    log.info("ETL concluido com sucesso.")
+
+
+if __name__ == "__main__":
+    run()
