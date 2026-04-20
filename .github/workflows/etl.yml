@@ -28,7 +28,6 @@ jobs:
           DB_MAX_CONNECTIONS:       ${{ secrets.DB_MAX_CONNECTIONS }}
           DB_INCREMENT_CONNECTIONS: ${{ secrets.DB_INCREMENT_CONNECTIONS }}
           ORACLE_CLIENT_PATH:       ${{ secrets.ORACLE_CLIENT_PATH }}
-          FCDF_PATH:                ${{ secrets.FCDF_PATH }}
         run: py etl.py
 
       - name: Commitar JSON.GZ no repositorio

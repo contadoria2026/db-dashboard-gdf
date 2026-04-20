@@ -1,20 +1,20 @@
--- receita_RCL.sql — Receita Corrente Liquida (RREO Anexo 3)
--- Placeholder {SCHEMA_ANO} substituido pelo Python (ex: mil2026)
--- Schema mil2001 e fixo (saldocontabil_ex — view historica)
--- Nao colocar ponto-e-virgula no final
+-- receita_RCL.sql — Receita Corrente Líquida (RREO Anexo 3)
+-- Placeholder {SCHEMA_ANO} substituído pelo Python (ex: mil2026)
+-- Schema mil2001 é fixo (saldocontabil_ex — view histórica)
+-- Não colocar ponto-e-vírgula no final
 --
 -- Ranges cocontacontabil:
---   521100000-521299999 : Previsao de Receitas Correntes (classe 5)
---   621200000-621399999 : Realizados de Receitas Correntes (classe 6)
---                         EXCETO a conta 621310100 (nao entra na apuracao)
+--   521100000–521299999 : Previsão de Receitas Correntes (classe 5)
+--   621200000–621399999 : Realizados de Receitas Correntes (classe 6)
+--                         EXCETO a conta 621310100 (não entra na apuração)
 --
 -- class_orc = SUBSTR(cocontacorrente, 1, 8) — usado pelo Python para
 --             classificar cada linha nas categorias do demonstrativo.
 -- cofonte e cofontefederal — usados para apurar emendas individuais (V),
---             emendas de bancada (VII) e agentes comunitarios (VIII).
+--             emendas de bancada (VII) e agentes comunitários (VIII).
 -- max_mes_fechado — max(inmes) de {SCHEMA_ANO}.mesfechado (inmes 1-12).
---   Define o ultimo mes da janela de 12 colunas do demonstrativo.
---   NULL quando nao ha meses fechados no exercicio corrente (fallback no Python).
+--   Define o último mês da janela de 12 colunas do demonstrativo.
+--   NULL quando não há meses fechados no exercício corrente (fallback no Python).
 
 SELECT
   s.coexercicio,

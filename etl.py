@@ -173,12 +173,7 @@ def _rcl_emenda(cofonte, cofontefederal):
 
 
 def load_fcdf_data(base_dir):
-    # Prioridade: variavel de ambiente FCDF_PATH (usada no CI/Actions)
-    env_path = os.getenv("FCDF_PATH", "").strip()
-    if env_path:
-        path = Path(env_path)
-    else:
-        path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
+    path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
     if not path.exists():
         log.warning(f"Planilha FCDF nao encontrada: {path}")
         return {"realizados": {}, "previsao": {}}
