@@ -20,6 +20,7 @@ DB_USER     = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_DSN      = os.getenv("DB_DSN", "10.69.1.118:1521/oraprd06")
 CLIENT_PATH = os.getenv("ORACLE_CLIENT_PATH", "").strip()
+FCDF_PATH   = os.getenv("FCDF_PATH", "").strip()
 DB_MIN  = int(os.getenv("DB_MIN_CONNECTIONS", 1))
 DB_MAX  = int(os.getenv("DB_MAX_CONNECTIONS", 5))
 DB_INC  = int(os.getenv("DB_INCREMENT_CONNECTIONS", 1))
@@ -41,10 +42,6 @@ GZ_DIR.mkdir(exist_ok=True)
 SCHEMA_ANO = f"mil{datetime.now().year}"
 
 QUERIES = [
-    {
-        "file": "saldo_funcao_subfuncao.json",
-        "sql_file": "saldocontabil_funcao_subfuncao.sql",
-    },
     {
         "file": "receita.json",
         "sql_file": "RECEITA.sql",
@@ -178,7 +175,10 @@ def _rcl_emenda(cofonte, cofontefederal):
 
 
 def load_fcdf_data(base_dir):
-    path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
+    if FCDF_PATH:
+        path = Path(FCDF_PATH)
+    else:
+        path = base_dir / "data" / "UFIS-FCDFDespesadePessoal.xlsx"
     if not path.exists():
         log.warning(f"Planilha FCDF nao encontrada: {path}")
         return {"realizados": {}, "previsao": {}}
