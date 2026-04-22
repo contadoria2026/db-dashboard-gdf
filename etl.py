@@ -322,27 +322,29 @@ def build_rcl_data(rows):
             m = 12
             a -= 1
 
-    colunas = [f"{m},{a}" for m, a in ultimos12]
-    rotulos = [f"{MESES_PT[m-1]}/{str(a)[2:]}" for m, a in ultimos12]
-    log.info(f"  RCL: colunas {rotulos[0]} -> {rotulos[-1]}")
+    # Janela completa: Jan/ano_anterior até ref_mes/ref_ano (suporte a bimestres)
+    ano_anterior = ref_ano - 1
+    todas_colunas_ma = ([(mm, ano_anterior) for mm in range(1, 13)] +
+                        [(mm, ref_ano) for mm in range(1, ref_mes + 1)])
+
+    janela_padrao = [f"{m},{a}" for m, a in ultimos12]
+    colunas  = [f"{m},{a}" for m, a in todas_colunas_ma]
+    rotulos  = [f"{MESES_PT[m-1]}/{str(a)[2:]}" for m, a in todas_colunas_ma]
+    log.info(f"  RCL: colunas {rotulos[0]} -> {rotulos[-1]} ({len(colunas)} meses)")
 
     def monta_linha(src, key):
-        linha, total = {}, 0.0
-        for m, a in ultimos12:
+        linha = {}
+        for m, a in todas_colunas_ma:
             col = f"{m},{a}"
-            v = src.get((m, a), {}).get(key, 0.0)
-            linha[col] = v
-            total += v
-        linha["_total"] = total
+            linha[col] = src.get((m, a), {}).get(key, 0.0)
+        linha["_total"] = sum(linha.get(c, 0.0) for c in janela_padrao)
         return linha
 
     def soma_linhas(linhas_dict, keys):
-        linha, total = {}, 0.0
+        linha = {}
         for col in colunas:
-            v = sum(linhas_dict.get(k, {}).get(col, 0.0) for k in keys)
-            linha[col] = v
-            total += v
-        linha["_total"] = total
+            linha[col] = sum(linhas_dict.get(k, {}).get(col, 0.0) for k in keys)
+        linha["_total"] = sum(linha.get(c, 0.0) for c in janela_padrao)
         return linha
 
     KEYS_ATOMICAS = [
@@ -379,13 +381,11 @@ def build_rcl_data(rows):
     prev_fcdf = fcdf.get("previsao", {})
 
     def monta_fcdf(campo):
-        linha, total = {}, 0.0
-        for m, a in ultimos12:
+        linha = {}
+        for m, a in todas_colunas_ma:
             col = f"{m},{a}"
-            v = real_fcdf.get((m, a), {}).get(campo, 0.0)
-            linha[col] = v
-            total += v
-        linha["_total"] = total
+            linha[col] = real_fcdf.get((m, a), {}).get(campo, 0.0)
+        linha["_total"] = sum(linha.get(c, 0.0) for c in janela_padrao)
         return linha
 
     linhas["fcdf_total"]   = monta_fcdf("total")
@@ -469,8 +469,11 @@ def build_rcl_data(rows):
     return {
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
         "ano": ano_atual,
+        "ref_mes": ref_mes,
+        "ref_ano": ref_ano,
         "colunas": colunas,
         "rotulos": rotulos,
+        "janela_padrao": janela_padrao,
         "linhas": linhas,
         "previsao": previsao,
     }
@@ -605,3 +608,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+      
