@@ -1246,7 +1246,7 @@ function atualizarCards(filtradosRealizado, filtradosPrevisao, mesSel) {
 
     // Falta arrecadar (realizado - previsão; negativo = ainda falta)
     const falta = realizadoAtual - prevAtualizada;
-    document.getElementById('cardSaldo').textContent = fmtAbrev(falta);
+    document.getElementById('cardSaldo').textContent = fmtAbrev(Math.abs(falta));
     document.getElementById('cardSaldo').className = 'card-valor ' + (falta < 0 ? 'valor-negativo' : 'variacao-positiva');
     const pctFalta = prevAtualizada !== 0 ? (falta / Math.abs(prevAtualizada) * 100) : 0;
     const descFalta = falta < 0
