@@ -359,23 +359,23 @@ function filtered(anoOverride) {
 // MÉTRICAS
 // ═══════════════════════════════════════════════════════════════
 function computeMetrics(recs) {
-  // INMES=0 → inscrição; INMES=max → saldo acumulado do período
+  // INMES=0 → inscrição (saldo de abertura, leitura pontual)
+  // Cancelado / Pago / a Pagar → movimentos mensais (INMES 1-12): deve somar TODOS os meses
   const maxInmes = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
   const r0  = recs.filter(r => r.inmes === 0);
-  const rMx = recs.filter(r => r.inmes === maxInmes);
 
   function sum(arr, contas) {
     return arr.filter(r => contas.has(r.cocontacontabil)).reduce((a, r) => a + r.saldo, 0);
   }
 
-  const rpnpI = sum(r0,  CC.rpnpInscrito);
-  const rppI  = sum(r0,  CC.rppInscrito);
-  const rpnpC = sum(rMx, CC.rpnpCancelado);
-  const rppC  = sum(rMx, CC.rppCancelado);
-  const rpnpP = sum(rMx, CC.rpnpPago);
-  const rppP  = sum(rMx, CC.rppPago);
-  const rpnpA = sum(rMx, CC.rpnpAPagar);
-  const rppA  = sum(rMx, CC.rppAPagar);
+  const rpnpI = sum(r0,   CC.rpnpInscrito);
+  const rppI  = sum(r0,   CC.rppInscrito);
+  const rpnpC = sum(recs, CC.rpnpCancelado);
+  const rppC  = sum(recs, CC.rppCancelado);
+  const rpnpP = sum(recs, CC.rpnpPago);
+  const rppP  = sum(recs, CC.rppPago);
+  const rpnpA = sum(recs, CC.rpnpAPagar);
+  const rppA  = sum(recs, CC.rppAPagar);
 
   return {
     rapInscrito:  rpnpI + rppI,
@@ -511,15 +511,13 @@ function renderTaxaCancelamento() {
   const frags = ANOS.map(ano => {
     const recs  = filtered(ano);
     const r0    = recs.filter(r => r.inmes === 0);
-    const maxIm = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
-    const rMx   = recs.filter(r => r.inmes === maxIm);
 
     function sum(arr, contas) {
       return arr.filter(r => contas.has(r.cocontacontabil)).reduce((a, r) => a + r.saldo, 0);
     }
 
-    const inscrito  = sum(r0,  CC.rpnpInscrito);
-    const cancelado = sum(rMx, CC.rpnpCancelado);
+    const inscrito  = sum(r0,   CC.rpnpInscrito);
+    const cancelado = sum(recs, CC.rpnpCancelado);
     const pct       = inscrito > 0 ? (cancelado / inscrito * 100) : 0;
     const cor       = pct <= 10 ? '#16a34a' : pct <= 25 ? '#d97706' : '#dc2626';
 
@@ -539,17 +537,15 @@ function renderTaxaCancelamento() {
 // ═══════════════════════════════════════════════════════════════
 function renderChartCat() {
   const recs  = filtered();
-  const maxIm = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
   const r0    = recs.filter(r => r.inmes === 0);
-  const rMx   = recs.filter(r => r.inmes === maxIm);
 
   function sum(arr, contas) { return arr.filter(r => contas.has(r.cocontacontabil)).reduce((a,r) => a+r.saldo, 0); }
 
   const dados = [
-    { value: fmtMi(sum(r0,  CC.rpnpInscrito)),  name: 'RPNP Inscrito',  itemStyle: { color: '#2e7d32' } },
-    { value: fmtMi(sum(r0,  CC.rppInscrito)),   name: 'RPP Inscrito',   itemStyle: { color: '#81c784' } },
-    { value: fmtMi(sum(rMx, CC.rpnpAPagar)),    name: 'RPNP a Pagar',   itemStyle: { color: '#1d4ed8' } },
-    { value: fmtMi(sum(rMx, CC.rppAPagar)),     name: 'RPP a Pagar',    itemStyle: { color: '#93c5fd' } },
+    { value: fmtMi(sum(r0,   CC.rpnpInscrito)),  name: 'RPNP Inscrito',  itemStyle: { color: '#2e7d32' } },
+    { value: fmtMi(sum(r0,   CC.rppInscrito)),   name: 'RPP Inscrito',   itemStyle: { color: '#81c784' } },
+    { value: fmtMi(sum(recs, CC.rpnpAPagar)),    name: 'RPNP a Pagar',   itemStyle: { color: '#1d4ed8' } },
+    { value: fmtMi(sum(recs, CC.rppAPagar)),     name: 'RPP a Pagar',    itemStyle: { color: '#93c5fd' } },
   ].filter(d => d.value > 0);
 
   cCat.setOption({
@@ -627,9 +623,7 @@ function renderChartGauge(m) {
 // ═══════════════════════════════════════════════════════════════
 function renderTable() {
   const recs  = filtered();
-  const maxIm = recs.reduce((m, r) => Math.max(m, r.inmes), 0);
   const r0    = recs.filter(r => r.inmes === 0);
-  const rMx   = recs.filter(r => r.inmes === maxIm);
 
   const allInsc = new Set([...CC.rpnpInscrito, ...CC.rppInscrito]);
   const allPago = new Set([...CC.rpnpPago,     ...CC.rppPago]);
@@ -644,10 +638,10 @@ function renderTable() {
       ugs[r.coug][campo] += r.saldo;
     }
   }
-  add(r0,  allInsc, 'i');
-  add(rMx, allPago, 'p');
-  add(rMx, allCanc, 'c');
-  add(rMx, allAPag, 'a');
+  add(r0,   allInsc, 'i');
+  add(recs, allPago, 'p');
+  add(recs, allCanc, 'c');
+  add(recs, allAPag, 'a');
 
   const rows = Object.values(ugs).sort((a, b) => b.i - a.i);
   let [totI, totP, totC, totA] = [0, 0, 0, 0];
@@ -798,3 +792,4 @@ function init(json) {
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                    
