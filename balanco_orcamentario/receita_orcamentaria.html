@@ -290,6 +290,15 @@
         .treemap-item:hover { opacity: 0.85; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .treemap-item small { font-weight: 400; font-size: 11px; opacity: 0.95; margin-top: 2px; }
         /* Linha */
+        /* badge corrida para a meta */
+        .meta-badge-svg {
+            display: inline-block; font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 12px; margin-left: 12px;
+            vertical-align: middle;
+        }
+        .meta-badge-svg.adiantado { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .meta-badge-svg.atras     { background: #fff8e1; color: #b45309; border: 1px solid #fde68a; }
+
         .line-chart-svg {
             width: 100%; height: 200px;
         }
@@ -521,11 +530,14 @@
                 </table>
             </div>
         </div>
-        <!-- GRÁFICO DE EVOLUÇÃO MENSAL (abaixo da tabela) -->
+        <!-- GRÁFICO CORRIDA PARA A META (abaixo da tabela) -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-box" style="width:100%;">
-                <div class="grafico-titulo">Evolução Mensal — Realizado Acumulado (2026 vs 2025)</div>
-                <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 200" preserveAspectRatio="xMidYMid meet"></svg>
+                <div class="grafico-titulo">
+                    Corrida para a Meta — Realizado Acumulado vs Previsão Atualizada
+                    <span class="meta-badge-svg" id="metaBadge">—</span>
+                </div>
+                <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 240" preserveAspectRatio="xMidYMid meet"></svg>
             </div>
         </div>
         <!-- TREEMAP (abaixo da evolução mensal) -->
@@ -901,79 +913,141 @@ function desenharTreemap(dados) {
     container.innerHTML = html;
 }
 
-// ============ GRÁFICO DE LINHAS ============
-function desenharLinhas(dadosMensaisAtual, dadosMensaisAnterior) {
+// ============ GRÁFICO CORRIDA PARA A META ============
+function desenharCorridaMeta(filtradosRealizado, filtPrevFull) {
     const svg = document.getElementById('lineChart');
-    const W = 700, H = 200, padL = 70, padR = 20, padT = 20, padB = 30;
+    const W = 700, H = 240, padL = 72, padR = 24, padT = 28, padB = 38;
     const gW = W - padL - padR, gH = H - padT - padB;
 
-    // Encontrar meses com dados
-    const allMeses = [...new Set([...Object.keys(dadosMensaisAtual), ...Object.keys(dadosMensaisAnterior)])]
-        .map(Number).sort((a,b) => a - b);
-    if (allMeses.length === 0) { svg.innerHTML = ''; return; }
+    const MESES_CURTO = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-    const minM = Math.min(...allMeses), maxM = Math.max(...allMeses);
-    const meses = [];
-    for (let m = minM; m <= maxM; m++) meses.push(m);
+    // Previsão Atualizada anual (todos os inmes, filtros aplicados)
+    const prevAtualizada = filtPrevFull
+        .filter(r => r.coexercicio === ANO_ATUAL)
+        .reduce((s, r) => s + r.saldo, 0);
 
-    // Acumular valores mês a mês
-    let acumAtual = 0, acumAnt = 0;
-    const ptsAtual = [], ptsAnterior = [];
-    meses.forEach(m => {
-        acumAtual += (dadosMensaisAtual[m] || 0);
-        acumAnt += (dadosMensaisAnterior[m] || 0);
-        ptsAtual.push({ m, v: acumAtual });
-        ptsAnterior.push({ m, v: acumAnt });
+    if (prevAtualizada <= 0) { svg.innerHTML = ''; return; }
+
+    // Realizado por mês (ANO_ATUAL) — valores individuais por inmes
+    const mensalAtual = {};
+    filtradosRealizado.filter(r => r.coexercicio === ANO_ATUAL).forEach(r => {
+        mensalAtual[r.inmes] = (mensalAtual[r.inmes] || 0) + r.saldo;
     });
 
-    const allVals = [...ptsAtual.map(p=>p.v), ...ptsAnterior.map(p=>p.v)];
-    const maxV = Math.max(...allVals, 1);
-    const minV = Math.min(0, ...allVals);
-    const rangeV = maxV - minV || 1;
+    // Acumular mês a mês (apenas meses com dados)
+    let acum = 0, ultimoMes = 0;
+    const acumAteMes = {};
+    for (let m = 1; m <= 12; m++) {
+        if (mensalAtual[m] != null) {
+            acum += mensalAtual[m];
+            acumAteMes[m] = acum;
+            ultimoMes = m;
+        }
+    }
+    if (ultimoMes === 0) { svg.innerHTML = ''; return; }
 
-    function xPos(m) { return padL + ((m - minM) / (maxM - minM || 1)) * gW; }
-    function yPos(v) { return padT + gH - ((v - minV) / rangeV) * gH; }
+    const maxV = prevAtualizada * 1.06;
+    const xPos = m => padL + ((m - 1) / 11) * gW;
+    const yPos = v => padT + gH - (v / maxV) * gH;
+    const paceEsperado = (prevAtualizada / 12) * ultimoMes;
+    const adiantado    = acumAteMes[ultimoMes] >= paceEsperado;
+    const corReal      = adiantado ? '#16a34a' : '#d97706';
+    const corGap       = adiantado ? 'rgba(22,163,74,0.10)' : 'rgba(217,119,6,0.12)';
+    const corAreaReal  = adiantado ? 'rgba(22,163,74,0.18)' : 'rgba(217,119,6,0.18)';
 
-    let svgContent = '';
+    let s = '';
 
     // Grid horizontal
-    const nGrid = 4;
-    for (let i = 0; i <= nGrid; i++) {
-        const val = minV + (rangeV / nGrid) * i;
-        const y = yPos(val);
-        svgContent += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" class="grid-line"/>`;
-        const label = (val / 1e6).toFixed(0) + 'M';
-        svgContent += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end">${label}</text>`;
+    for (let i = 0; i <= 4; i++) {
+        const v = (maxV / 4) * i;
+        const y = yPos(v);
+        s += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eeeeee" stroke-width="1"/>`;
+        const lbl = v >= 1e9 ? (v/1e9).toFixed(1)+'Bi' : (v/1e6).toFixed(0)+'M';
+        s += `<text x="${padL-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10" fill="#888">${lbl}</text>`;
     }
 
-    // Labels dos meses
-    const MESES_CURTO = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    meses.forEach(m => {
-        svgContent += `<text x="${xPos(m)}" y="${H - 4}" text-anchor="middle">${MESES_CURTO[m] || m}</text>`;
-    });
-
-    // Linhas
-    function pathStr(pts) {
-        return pts.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${xPos(p.m)} ${yPos(p.v)}`).join(' ');
+    // Labels dos meses (X axis — todos os 12)
+    for (let m = 1; m <= 12; m++) {
+        const x = xPos(m).toFixed(1);
+        s += `<text x="${x}" y="${H-padB+16}" text-anchor="middle" font-size="10" fill="${m <= ultimoMes ? '#555' : '#bbb'}">${MESES_CURTO[m]}</text>`;
     }
-    svgContent += `<path d="${pathStr(ptsAnterior)}" class="line-anterior"/>`;
-    svgContent += `<path d="${pathStr(ptsAtual)}" class="line-atual"/>`;
 
-    // Dots
-    ptsAnterior.forEach(p => {
-        svgContent += `<circle cx="${xPos(p.m)}" cy="${yPos(p.v)}" class="dot-ant"/>`;
-    });
-    ptsAtual.forEach(p => {
-        svgContent += `<circle cx="${xPos(p.m)}" cy="${yPos(p.v)}" class="dot"/>`;
-    });
+    // Linha vertical no último mês com dados
+    const xLast = xPos(ultimoMes).toFixed(1);
+    s += `<line x1="${xLast}" y1="${padT}" x2="${xLast}" y2="${padT+gH}" stroke="${corReal}" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+
+    // Área da lacuna (forecast - realizado), do mês 1 ao último com dados
+    const gapTop = [], gapBot = [];
+    for (let m = 1; m <= ultimoMes; m++) {
+        gapTop.push(`${xPos(m).toFixed(1)},${yPos(prevAtualizada).toFixed(1)}`);
+    }
+    for (let m = ultimoMes; m >= 1; m--) {
+        gapBot.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m] || 0).toFixed(1)}`);
+    }
+    s += `<polygon points="${[...gapTop,...gapBot].join(' ')}" fill="${corGap}" stroke="none"/>`;
+
+    // Área abaixo do realizado (do mês 1 ao último)
+    const areaReal = [`${xPos(1).toFixed(1)},${yPos(0).toFixed(1)}`];
+    for (let m = 1; m <= ultimoMes; m++) {
+        areaReal.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m]).toFixed(1)}`);
+    }
+    areaReal.push(`${xPos(ultimoMes).toFixed(1)},${yPos(0).toFixed(1)}`);
+    s += `<polygon points="${areaReal.join(' ')}" fill="${corAreaReal}" stroke="none"/>`;
+
+    // Linha de ritmo linear (pontilhada cinza) — vai do mês 1 ao mês 12
+    const ritmoPath = [1,12].map((m,i) => `${i===0?'M':'L'}${xPos(m).toFixed(1)} ${yPos((prevAtualizada/12)*m).toFixed(1)}`).join(' ');
+    s += `<path d="${ritmoPath}" stroke="#aaaaaa" stroke-width="1.5" stroke-dasharray="4,4" fill="none"/>`;
+
+    // Linha da meta (tracejada azul) — horizontal em todos os 12 meses
+    const yMeta = yPos(prevAtualizada).toFixed(1);
+    s += `<line x1="${xPos(1).toFixed(1)}" y1="${yMeta}" x2="${xPos(12).toFixed(1)}" y2="${yMeta}" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="8,4"/>`;
+
+    // Linha do realizado (sólida)
+    let rPath = '';
+    for (let m = 1; m <= ultimoMes; m++) {
+        rPath += `${m===1?'M':'L'}${xPos(m).toFixed(1)} ${yPos(acumAteMes[m]).toFixed(1)} `;
+    }
+    s += `<path d="${rPath.trim()}" stroke="${corReal}" stroke-width="2.5" fill="none"/>`;
+
+    // Dots no realizado
+    for (let m = 1; m <= ultimoMes; m++) {
+        s += `<circle cx="${xPos(m).toFixed(1)}" cy="${yPos(acumAteMes[m]).toFixed(1)}" r="4" fill="${corReal}" stroke="#fff" stroke-width="2"/>`;
+    }
+
+    // Rótulo de valor no último ponto
+    const xLblPt = xPos(ultimoMes), yLblPt = yPos(acumAteMes[ultimoMes]);
+    const realLbl = acumAteMes[ultimoMes] >= 1e9
+        ? 'R$ '+(acumAteMes[ultimoMes]/1e9).toFixed(2)+'Bi'
+        : 'R$ '+(acumAteMes[ultimoMes]/1e6).toFixed(0)+'M';
+    const lblOffset = xLblPt > W * 0.75 ? -8 : 8;
+    const lblAnchor = xLblPt > W * 0.75 ? 'end' : 'start';
+    s += `<text x="${(xLblPt+lblOffset).toFixed(1)}" y="${(yLblPt-8).toFixed(1)}" font-size="11" font-weight="700" fill="${corReal}" text-anchor="${lblAnchor}">${realLbl}</text>`;
+
+    // Rótulo da meta (no lado direito)
+    const metaLbl = prevAtualizada >= 1e9
+        ? 'Meta: R$ '+(prevAtualizada/1e9).toFixed(2)+'Bi'
+        : 'Meta: R$ '+(prevAtualizada/1e6).toFixed(0)+'M';
+    s += `<text x="${(xPos(12)+4).toFixed(1)}" y="${(+yMeta+4).toFixed(1)}" font-size="10" font-weight="600" fill="#1d4ed8">${metaLbl}</text>`;
 
     // Legenda
-    svgContent += `<line x1="${padL}" y1="${12}" x2="${padL+20}" y2="${12}" stroke="#006633" stroke-width="2.5"/>`;
-    svgContent += `<text x="${padL+24}" y="${16}" font-size="11" fill="#006633">${ANO_ATUAL}</text>`;
-    svgContent += `<line x1="${padL+80}" y1="${12}" x2="${padL+100}" y2="${12}" stroke="#999" stroke-width="2" stroke-dasharray="6,3"/>`;
-    svgContent += `<text x="${padL+104}" y="${16}" font-size="11" fill="#999">${ANO_ANTERIOR}</text>`;
+    const ly = padT - 12;
+    s += `<line x1="${padL}" y1="${ly}" x2="${padL+18}" y2="${ly}" stroke="${corReal}" stroke-width="2.5"/>`;
+    s += `<circle cx="${padL+9}" cy="${ly}" r="3" fill="${corReal}" stroke="#fff" stroke-width="1.5"/>`;
+    s += `<text x="${padL+22}" y="${ly+4}" font-size="11" fill="${corReal}">Realizado Acumulado ${ANO_ATUAL}</text>`;
+    s += `<line x1="${padL+180}" y1="${ly}" x2="${padL+198}" y2="${ly}" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="8,4"/>`;
+    s += `<text x="${padL+202}" y="${ly+4}" font-size="11" fill="#1d4ed8">Previsão Atualizada</text>`;
+    s += `<line x1="${padL+330}" y1="${ly}" x2="${padL+348}" y2="${ly}" stroke="#aaaaaa" stroke-width="1.5" stroke-dasharray="4,4"/>`;
+    s += `<text x="${padL+352}" y="${ly+4}" font-size="11" fill="#aaaaaa">Ritmo Linear</text>`;
 
-    svg.innerHTML = svgContent;
+    svg.innerHTML = s;
+
+    // Atualiza badge externo
+    const pctMeta = (acumAteMes[ultimoMes] / prevAtualizada * 100);
+    const badge = document.getElementById('metaBadge');
+    if (badge) {
+        badge.textContent = `${MESES_CURTO[ultimoMes]}/${ANO_ATUAL}: ${pctMeta.toFixed(1).replace('.',',')}% da meta${adiantado ? ' ✓' : ' ▼'}`;
+        badge.className = 'meta-badge-svg ' + (adiantado ? 'adiantado' : 'atras');
+    }
 }
 
 // ============ ATUALIZAR CARDS ============
@@ -1031,7 +1105,7 @@ function atualizarCards(filtradosRealizado, filtradosPrevisao, mesSel) {
 }
 
 // ============ ATUALIZAR GRÁFICOS ============
-function atualizarGraficos(filtradosRealizado) {
+function atualizarGraficos(filtradosRealizado, filtPrevFull) {
     // Barras: realizado por espécie da receita (ano atual)
     const porEsp = {};
     filtradosRealizado.filter(r => r.coexercicio === ANO_ATUAL).forEach(r => {
@@ -1051,13 +1125,8 @@ function atualizarGraficos(filtradosRealizado) {
     const tmData = Object.entries(porTipo).map(([nome, valor]) => ({ nome, valor }));
     desenharTreemap(tmData);
 
-    // Linha: evolução mensal acumulada
-    const mensalAtual = {}, mensalAnterior = {};
-    filtradosRealizado.forEach(r => {
-        if (r.coexercicio === ANO_ATUAL)   mensalAtual[r.inmes] = (mensalAtual[r.inmes] || 0) + r.saldo;
-        if (r.coexercicio === ANO_ANTERIOR) mensalAnterior[r.inmes] = (mensalAnterior[r.inmes] || 0) + r.saldo;
-    });
-    desenharLinhas(mensalAtual, mensalAnterior);
+    // Corrida para a Meta
+    desenharCorridaMeta(filtradosRealizado, filtPrevFull);
 }
 
 // ============ TOGGLE UGs DENTRO DE TIPO ============
@@ -1089,7 +1158,7 @@ function aplicarFiltros() {
     if (catEconSel) filtrados = filtrados.filter(r => isCatEcon(r, catEconSel));
     if (espSel)   filtrados = filtrados.filter(r => r.especie_receita === espSel);
 
-    // 1b. Filtrar previsão (mesmos filtros)
+    // 1b. Filtrar previsão (mesmos filtros, limitado ao mês selecionado)
     let filtPrev = PREVISAO.filter(r => r.inmes <= mesSel);
     if (ugSel)    filtPrev = filtPrev.filter(r => String(r.coug) === ugSel);
     if (fonteSel) filtPrev = filtPrev.filter(r => r.fonte_agrupada === fonteSel);
@@ -1097,6 +1166,15 @@ function aplicarFiltros() {
     if (intraSel === 'excluir') filtPrev = filtPrev.filter(r => !isIntra(r));
     if (catEconSel) filtPrev = filtPrev.filter(r => isCatEcon(r, catEconSel));
     if (espSel)   filtPrev = filtPrev.filter(r => r.especie_receita === espSel);
+
+    // 1c. Previsão anual completa (sem filtro de inmes) — para o gráfico corrida para a meta
+    let filtPrevFull = PREVISAO.slice();
+    if (ugSel)    filtPrevFull = filtPrevFull.filter(r => String(r.coug) === ugSel);
+    if (fonteSel) filtPrevFull = filtPrevFull.filter(r => r.fonte_agrupada === fonteSel);
+    if (intraSel === 'somente') filtPrevFull = filtPrevFull.filter(r => isIntra(r));
+    if (intraSel === 'excluir') filtPrevFull = filtPrevFull.filter(r => !isIntra(r));
+    if (catEconSel) filtPrevFull = filtPrevFull.filter(r => isCatEcon(r, catEconSel));
+    if (espSel)   filtPrevFull = filtPrevFull.filter(r => r.especie_receita === espSel);
 
     // 2. Agregar por hierarquia e ano
     function agregar(registros, camposGrupo) {
@@ -1234,7 +1312,7 @@ function aplicarFiltros() {
 
     // 5. Atualizar cards e gráficos
     atualizarCards(filtrados, filtPrev, mesSel);
-    atualizarGraficos(filtrados);
+    atualizarGraficos(filtrados, filtPrevFull);
 }
 
 // ============ EVENTOS ============
