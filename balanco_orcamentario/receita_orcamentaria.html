@@ -289,11 +289,26 @@
         }
         .treemap-item:hover { opacity: 0.85; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .treemap-item small { font-weight: 400; font-size: 11px; opacity: 0.95; margin-top: 2px; }
-        /* Linha */
+        /* Gráfico Corrida para a Meta — caixa destacada */
+        .grafico-corrida-box {
+            background: #fff; border-radius: 12px;
+            padding: 20px 24px 16px;
+            box-shadow: 0 4px 16px rgba(0,102,51,0.10), 0 1px 4px rgba(0,0,0,0.06);
+            border: 1.5px solid #c8e6c9;
+            margin-bottom: 16px;
+        }
+        .grafico-corrida-titulo {
+            font-size: 15px; font-weight: 700; color: #1b5e20;
+            margin-bottom: 4px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .grafico-corrida-sub {
+            font-size: 11px; color: #888; margin-bottom: 14px;
+        }
         /* badge corrida para a meta */
         .meta-badge-svg {
-            display: inline-block; font-size: 11px; font-weight: 700;
-            padding: 3px 10px; border-radius: 12px; margin-left: 12px;
+            display: inline-block; font-size: 12px; font-weight: 700;
+            padding: 4px 14px; border-radius: 20px; margin-left: 4px;
             vertical-align: middle;
         }
         .meta-badge-svg.adiantado { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
@@ -499,6 +514,16 @@
             </div>
         </div>
 
+        <!-- CORRIDA PARA A META -->
+        <div class="grafico-corrida-box">
+            <div class="grafico-corrida-titulo">
+                Corrida para a Meta — Realizado Acumulado vs Previsão Atualizada
+                <span class="meta-badge-svg" id="metaBadge">—</span>
+            </div>
+            <div class="grafico-corrida-sub">Exercício <span id="anoLabel">2026</span> · Valores em R$ Bilhões · Todos os meses do exercício</div>
+            <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 270" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
         <!-- BARRAS + GAUGE (lado a lado) -->
         <div class="graficos-topo">
             <div class="grafico-barras-box">
@@ -530,17 +555,7 @@
                 </table>
             </div>
         </div>
-        <!-- GRÁFICO CORRIDA PARA A META (abaixo da tabela) -->
-        <div class="graficos-section" style="margin-top:20px;">
-            <div class="grafico-box" style="width:100%;">
-                <div class="grafico-titulo">
-                    Corrida para a Meta — Realizado Acumulado vs Previsão Atualizada
-                    <span class="meta-badge-svg" id="metaBadge">—</span>
-                </div>
-                <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 240" preserveAspectRatio="xMidYMid meet"></svg>
-            </div>
-        </div>
-        <!-- TREEMAP (abaixo da evolução mensal) -->
+        <!-- TREEMAP (abaixo da tabela) -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-box" style="width:100%;">
                 <div class="grafico-titulo">Composição da Receita (Tipo)</div>
@@ -916,7 +931,7 @@ function desenharTreemap(dados) {
 // ============ GRÁFICO CORRIDA PARA A META ============
 function desenharCorridaMeta(filtradosRealizado, filtPrevFull) {
     const svg = document.getElementById('lineChart');
-    const W = 700, H = 240, padL = 72, padR = 24, padT = 28, padB = 38;
+    const W = 700, H = 270, padL = 76, padR = 28, padT = 30, padB = 42;
     const gW = W - padL - padR, gH = H - padT - padB;
 
     const MESES_CURTO = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -957,87 +972,86 @@ function desenharCorridaMeta(filtradosRealizado, filtPrevFull) {
 
     let s = '';
 
+    // Fundo levemente colorido na área do gráfico
+    s += `<rect x="${padL}" y="${padT}" width="${gW}" height="${gH}" fill="#fafffe" rx="4"/>`;
+
     // Grid horizontal
-    for (let i = 0; i <= 4; i++) {
-        const v = (maxV / 4) * i;
+    for (let i = 0; i <= 5; i++) {
+        const v = (maxV / 5) * i;
         const y = yPos(v);
-        s += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eeeeee" stroke-width="1"/>`;
-        const lbl = v >= 1e9 ? (v/1e9).toFixed(1)+'Bi' : (v/1e6).toFixed(0)+'M';
-        s += `<text x="${padL-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10" fill="#888">${lbl}</text>`;
+        s += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="${i===0?'#ccc':'#eeeeee'}" stroke-width="${i===0?1.5:1}"/>`;
+        const lbl = v >= 1e9 ? (v/1e9).toFixed(1)+' bi' : (v/1e6).toFixed(0)+' mi';
+        s += `<text x="${(padL-7).toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#777">${lbl}</text>`;
     }
 
     // Labels dos meses (X axis — todos os 12)
     for (let m = 1; m <= 12; m++) {
         const x = xPos(m).toFixed(1);
-        s += `<text x="${x}" y="${H-padB+16}" text-anchor="middle" font-size="10" fill="${m <= ultimoMes ? '#555' : '#bbb'}">${MESES_CURTO[m]}</text>`;
+        const ativo = m <= ultimoMes;
+        s += `<text x="${x}" y="${H-padB+18}" text-anchor="middle" font-size="11.5" font-weight="${ativo?'600':'400'}" fill="${ativo?'#444':'#ccc'}">${MESES_CURTO[m]}</text>`;
+        if (ativo) s += `<line x1="${x}" y1="${(padT+gH).toFixed(1)}" x2="${x}" y2="${(padT+gH+4).toFixed(1)}" stroke="#aaa" stroke-width="1"/>`;
     }
 
     // Linha vertical no último mês com dados
     const xLast = xPos(ultimoMes).toFixed(1);
-    s += `<line x1="${xLast}" y1="${padT}" x2="${xLast}" y2="${padT+gH}" stroke="${corReal}" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+    s += `<line x1="${xLast}" y1="${padT}" x2="${xLast}" y2="${padT+gH}" stroke="${corReal}" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6"/>`;
 
     // Área da lacuna (forecast - realizado), do mês 1 ao último com dados
     const gapTop = [], gapBot = [];
-    for (let m = 1; m <= ultimoMes; m++) {
-        gapTop.push(`${xPos(m).toFixed(1)},${yPos(prevAtualizada).toFixed(1)}`);
-    }
-    for (let m = ultimoMes; m >= 1; m--) {
-        gapBot.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m] || 0).toFixed(1)}`);
-    }
+    for (let m = 1; m <= ultimoMes; m++) gapTop.push(`${xPos(m).toFixed(1)},${yPos(prevAtualizada).toFixed(1)}`);
+    for (let m = ultimoMes; m >= 1; m--) gapBot.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m]||0).toFixed(1)}`);
     s += `<polygon points="${[...gapTop,...gapBot].join(' ')}" fill="${corGap}" stroke="none"/>`;
 
-    // Área abaixo do realizado (do mês 1 ao último)
+    // Área abaixo do realizado
     const areaReal = [`${xPos(1).toFixed(1)},${yPos(0).toFixed(1)}`];
-    for (let m = 1; m <= ultimoMes; m++) {
-        areaReal.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m]).toFixed(1)}`);
-    }
+    for (let m = 1; m <= ultimoMes; m++) areaReal.push(`${xPos(m).toFixed(1)},${yPos(acumAteMes[m]).toFixed(1)}`);
     areaReal.push(`${xPos(ultimoMes).toFixed(1)},${yPos(0).toFixed(1)}`);
     s += `<polygon points="${areaReal.join(' ')}" fill="${corAreaReal}" stroke="none"/>`;
 
-    // Linha de ritmo linear (pontilhada cinza) — vai do mês 1 ao mês 12
+    // Linha de ritmo linear (pontilhada cinza)
     const ritmoPath = [1,12].map((m,i) => `${i===0?'M':'L'}${xPos(m).toFixed(1)} ${yPos((prevAtualizada/12)*m).toFixed(1)}`).join(' ');
-    s += `<path d="${ritmoPath}" stroke="#aaaaaa" stroke-width="1.5" stroke-dasharray="4,4" fill="none"/>`;
+    s += `<path d="${ritmoPath}" stroke="#bbbbbb" stroke-width="2" stroke-dasharray="5,5" fill="none"/>`;
 
-    // Linha da meta (tracejada azul) — horizontal em todos os 12 meses
+    // Linha da meta (tracejada azul, mais grossa)
     const yMeta = yPos(prevAtualizada).toFixed(1);
-    s += `<line x1="${xPos(1).toFixed(1)}" y1="${yMeta}" x2="${xPos(12).toFixed(1)}" y2="${yMeta}" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="8,4"/>`;
+    s += `<line x1="${xPos(1).toFixed(1)}" y1="${yMeta}" x2="${xPos(12).toFixed(1)}" y2="${yMeta}" stroke="#1d4ed8" stroke-width="2.5" stroke-dasharray="10,5"/>`;
 
-    // Linha do realizado (sólida)
+    // Linha do realizado (sólida, mais grossa)
     let rPath = '';
-    for (let m = 1; m <= ultimoMes; m++) {
-        rPath += `${m===1?'M':'L'}${xPos(m).toFixed(1)} ${yPos(acumAteMes[m]).toFixed(1)} `;
-    }
-    s += `<path d="${rPath.trim()}" stroke="${corReal}" stroke-width="2.5" fill="none"/>`;
+    for (let m = 1; m <= ultimoMes; m++) rPath += `${m===1?'M':'L'}${xPos(m).toFixed(1)} ${yPos(acumAteMes[m]).toFixed(1)} `;
+    s += `<path d="${rPath.trim()}" stroke="${corReal}" stroke-width="3.5" stroke-linejoin="round" fill="none"/>`;
 
-    // Dots no realizado
+    // Dots no realizado (maiores)
     for (let m = 1; m <= ultimoMes; m++) {
-        s += `<circle cx="${xPos(m).toFixed(1)}" cy="${yPos(acumAteMes[m]).toFixed(1)}" r="4" fill="${corReal}" stroke="#fff" stroke-width="2"/>`;
+        s += `<circle cx="${xPos(m).toFixed(1)}" cy="${yPos(acumAteMes[m]).toFixed(1)}" r="5.5" fill="${corReal}" stroke="#fff" stroke-width="2.5"/>`;
     }
 
-    // Rótulo de valor no último ponto
+    // Rótulo de valor no último ponto (mais visível)
     const xLblPt = xPos(ultimoMes), yLblPt = yPos(acumAteMes[ultimoMes]);
     const realLbl = acumAteMes[ultimoMes] >= 1e9
-        ? 'R$ '+(acumAteMes[ultimoMes]/1e9).toFixed(2)+'Bi'
-        : 'R$ '+(acumAteMes[ultimoMes]/1e6).toFixed(0)+'M';
-    const lblOffset = xLblPt > W * 0.75 ? -8 : 8;
-    const lblAnchor = xLblPt > W * 0.75 ? 'end' : 'start';
-    s += `<text x="${(xLblPt+lblOffset).toFixed(1)}" y="${(yLblPt-8).toFixed(1)}" font-size="11" font-weight="700" fill="${corReal}" text-anchor="${lblAnchor}">${realLbl}</text>`;
+        ? 'R$ '+(acumAteMes[ultimoMes]/1e9).toFixed(2)+' bi'
+        : 'R$ '+(acumAteMes[ultimoMes]/1e6).toFixed(0)+' mi';
+    const lblOffset = xLblPt > W * 0.72 ? -10 : 10;
+    const lblAnchor = xLblPt > W * 0.72 ? 'end' : 'start';
+    s += `<rect x="${(xLblPt+lblOffset-(lblAnchor==='end'?62:0)).toFixed(1)}" y="${(yLblPt-26).toFixed(1)}" width="66" height="18" rx="4" fill="${corReal}" opacity="0.9"/>`;
+    s += `<text x="${(xLblPt+lblOffset+(lblAnchor==='end'?-3:3)).toFixed(1)}" y="${(yLblPt-13).toFixed(1)}" font-size="11.5" font-weight="700" fill="#fff" text-anchor="${lblAnchor}">${realLbl}</text>`;
 
-    // Rótulo da meta (no lado direito)
+    // Rótulo da meta (flag azul no lado direito)
     const metaLbl = prevAtualizada >= 1e9
-        ? 'Meta: R$ '+(prevAtualizada/1e9).toFixed(2)+'Bi'
-        : 'Meta: R$ '+(prevAtualizada/1e6).toFixed(0)+'M';
-    s += `<text x="${(xPos(12)+4).toFixed(1)}" y="${(+yMeta+4).toFixed(1)}" font-size="10" font-weight="600" fill="#1d4ed8">${metaLbl}</text>`;
+        ? 'R$ '+(prevAtualizada/1e9).toFixed(2)+' bi'
+        : 'R$ '+(prevAtualizada/1e6).toFixed(0)+' mi';
+    s += `<rect x="${(xPos(12)+5).toFixed(1)}" y="${(+yMeta-9).toFixed(1)}" width="62" height="18" rx="4" fill="#1d4ed8" opacity="0.85"/>`;
+    s += `<text x="${(xPos(12)+8).toFixed(1)}" y="${(+yMeta+4).toFixed(1)}" font-size="11" font-weight="700" fill="#fff">Meta ${metaLbl}</text>`;
 
     // Legenda
-    const ly = padT - 12;
-    s += `<line x1="${padL}" y1="${ly}" x2="${padL+18}" y2="${ly}" stroke="${corReal}" stroke-width="2.5"/>`;
-    s += `<circle cx="${padL+9}" cy="${ly}" r="3" fill="${corReal}" stroke="#fff" stroke-width="1.5"/>`;
-    s += `<text x="${padL+22}" y="${ly+4}" font-size="11" fill="${corReal}">Realizado Acumulado ${ANO_ATUAL}</text>`;
-    s += `<line x1="${padL+180}" y1="${ly}" x2="${padL+198}" y2="${ly}" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="8,4"/>`;
-    s += `<text x="${padL+202}" y="${ly+4}" font-size="11" fill="#1d4ed8">Previsão Atualizada</text>`;
-    s += `<line x1="${padL+330}" y1="${ly}" x2="${padL+348}" y2="${ly}" stroke="#aaaaaa" stroke-width="1.5" stroke-dasharray="4,4"/>`;
-    s += `<text x="${padL+352}" y="${ly+4}" font-size="11" fill="#aaaaaa">Ritmo Linear</text>`;
+    const ly = padT - 14;
+    s += `<line x1="${padL}" y1="${ly}" x2="${padL+22}" y2="${ly}" stroke="${corReal}" stroke-width="3"/>`;
+    s += `<circle cx="${padL+11}" cy="${ly}" r="4" fill="${corReal}" stroke="#fff" stroke-width="2"/>`;
+    s += `<text x="${padL+27}" y="${ly+4}" font-size="11.5" font-weight="600" fill="${corReal}">Realizado Acumulado</text>`;
+    s += `<line x1="${padL+175}" y1="${ly}" x2="${padL+197}" y2="${ly}" stroke="#1d4ed8" stroke-width="2.5" stroke-dasharray="8,4"/>`;
+    s += `<text x="${padL+202}" y="${ly+4}" font-size="11.5" font-weight="600" fill="#1d4ed8">Previsão Atualizada</text>`;
+    s += `<line x1="${padL+338}" y1="${ly}" x2="${padL+360}" y2="${ly}" stroke="#bbbbbb" stroke-width="2" stroke-dasharray="5,5"/>`;
+    s += `<text x="${padL+365}" y="${ly+4}" font-size="11.5" fill="#999">Ritmo Linear</text>`;
 
     svg.innerHTML = s;
 
