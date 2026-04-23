@@ -315,7 +315,7 @@
         .meta-badge-svg.atras     { background: #fff8e1; color: #b45309; border: 1px solid #fde68a; }
 
         .line-chart-svg {
-            width: 100%; height: 200px;
+            width: 100%; height: auto; display: block;
         }
         .line-chart-svg text { font-size: 11px; fill: #666; }
         .line-chart-svg .grid-line { stroke: #eee; stroke-width: 1; }
@@ -521,7 +521,7 @@
                 <span class="meta-badge-svg" id="metaBadge">—</span>
             </div>
             <div class="grafico-corrida-sub">Realizado por mês vs meta proporcional (Previsão Atualizada ÷ 12) · Exercício <span id="anoLabel">2026</span></div>
-            <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 460" preserveAspectRatio="xMidYMid meet"></svg>
+            <svg id="lineChart" class="line-chart-svg" viewBox="0 0 880 580" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
 
         <!-- BARRAS + GAUGE (lado a lado) -->
@@ -936,10 +936,10 @@ function desenharCorridaMeta(filtradosRealizado, filtPrevFull) {
 function desenharBulletChart(filtradosRealizado, filtPrevFull) {
     const svg = document.getElementById('lineChart');
     const MESES = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const W = 700, padL = 48, padR = 108, padT = 38, padB = 12;
-    const rowH = 20, rowGap = 8, rowStep = rowH + rowGap;
+    const W = 880, padL = 60, padR = 148, padT = 48, padB = 14;
+    const rowH = 26, rowGap = 10, rowStep = rowH + rowGap;
     const trackW = W - padL - padR;
-    const H = padT + 12 * rowStep + 14 + (rowH + 6) + 32 + padB;
+    const H = padT + 12 * rowStep + 16 + (rowH + 8) + 38 + padB;
 
     // Previsão anual
     const prevAtualizada = filtPrevFull
@@ -976,15 +976,15 @@ function desenharBulletChart(filtradosRealizado, filtPrevFull) {
     let s = '';
 
     // ── Cabeçalho das colunas ──
-    s += `<text x="${padL-2}" y="16" font-size="10" font-weight="700" fill="#94a3b8" letter-spacing="0.5">MÊS</text>`;
-    s += `<line x1="${xPace.toFixed(1)}" y1="20" x2="${xPace.toFixed(1)}" y2="${padT-4}" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>`;
-    s += `<text x="${xPace.toFixed(1)}" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">META/MÊS</text>`;
-    s += `<text x="${W-padR+10}" y="14" font-size="10" font-weight="700" fill="#94a3b8" letter-spacing="0.5">REALIZADO</text>`;
-    s += `<text x="${W-padR+10}" y="26" font-size="9.5" fill="#cbd5e1">% DO RITMO</text>`;
+    s += `<text x="${padL-2}" y="20" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="0.5">MÊS</text>`;
+    s += `<line x1="${xPace.toFixed(1)}" y1="24" x2="${xPace.toFixed(1)}" y2="${padT-5}" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="3,2" opacity="0.5"/>`;
+    s += `<text x="${xPace.toFixed(1)}" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">META/MÊS</text>`;
+    s += `<text x="${W-padR+12}" y="18" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="0.5">REALIZADO</text>`;
+    s += `<text x="${W-padR+12}" y="33" font-size="12" fill="#cbd5e1">% DO RITMO</text>`;
 
     // ── Linha de referência vertical (ritmo) em todo o gráfico ──
-    const allRowsH = 12 * rowStep + 14 + (rowH + 6);
-    s += `<line x1="${xPace.toFixed(1)}" y1="${padT}" x2="${xPace.toFixed(1)}" y2="${padT + allRowsH}" stroke="#1d4ed8" stroke-width="1" stroke-dasharray="4,3" opacity="0.25"/>`;
+    const allRowsH = 12 * rowStep + 16 + (rowH + 8);
+    s += `<line x1="${xPace.toFixed(1)}" y1="${padT}" x2="${xPace.toFixed(1)}" y2="${padT + allRowsH}" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.22"/>`;
 
     // ── Linhas mensais ──
     for (let m = 1; m <= 12; m++) {
@@ -1000,54 +1000,54 @@ function desenharBulletChart(filtradosRealizado, filtPrevFull) {
                   :               '#dc2626';
 
         // fundo (track)
-        s += `<rect x="${padL}" y="${y}" width="${trackW}" height="${rowH}" rx="3" fill="${futuro?'#f8fafc':'#f1f5f9'}"/>`;
+        s += `<rect x="${padL}" y="${y}" width="${trackW}" height="${rowH}" rx="4" fill="${futuro?'#f8fafc':'#f1f5f9'}"/>`;
 
         // barra realizado
         if (temDado) {
             const barW = Math.min((val / scaleMax) * trackW, trackW);
-            s += `<rect x="${padL}" y="${y}" width="${barW.toFixed(1)}" height="${rowH}" rx="3" fill="${cor}" opacity="0.82"/>`;
+            s += `<rect x="${padL}" y="${y}" width="${barW.toFixed(1)}" height="${rowH}" rx="4" fill="${cor}" opacity="0.85"/>`;
         }
 
         // marcador de ritmo (linha azul grossa)
-        s += `<line x1="${xPace.toFixed(1)}" y1="${y-1}" x2="${xPace.toFixed(1)}" y2="${y+rowH+1}" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>`;
+        s += `<line x1="${xPace.toFixed(1)}" y1="${y-2}" x2="${xPace.toFixed(1)}" y2="${y+rowH+2}" stroke="#1d4ed8" stroke-width="4" stroke-linecap="round"/>`;
 
         // label do mês (esquerda)
-        s += `<text x="${padL-6}" y="${(y + rowH/2 + 4.5).toFixed(1)}" text-anchor="end" font-size="12" font-weight="${temDado?'700':'400'}" fill="${temDado?'#334155':futuro?'#cbd5e1':'#334155'}">${MESES[m]}</text>`;
+        s += `<text x="${padL-8}" y="${(y + rowH/2 + 5).toFixed(1)}" text-anchor="end" font-size="15" font-weight="${temDado?'700':'400'}" fill="${temDado?'#1e293b':futuro?'#cbd5e1':'#1e293b'}">${MESES[m]}</text>`;
 
         // valores (direita)
         if (temDado) {
             const vLbl = val >= 1e9 ? 'R$ '+(val/1e9).toFixed(2)+' bi' : 'R$ '+(val/1e6).toFixed(0)+' mi';
             const pLbl = (pct*100).toFixed(0)+'%';
-            s += `<text x="${W-padR+10}" y="${(y+rowH/2+1).toFixed(1)}" font-size="11.5" font-weight="700" fill="${cor}">${vLbl}</text>`;
-            s += `<text x="${W-padR+10}" y="${(y+rowH/2+14).toFixed(1)}" font-size="10.5" fill="${cor}" opacity="0.85">${pLbl} do ritmo</text>`;
+            s += `<text x="${W-padR+12}" y="${(y+rowH/2+2).toFixed(1)}" font-size="14.5" font-weight="700" fill="${cor}">${vLbl}</text>`;
+            s += `<text x="${W-padR+12}" y="${(y+rowH/2+17).toFixed(1)}" font-size="13" fill="${cor}" opacity="0.85">${pLbl} do ritmo</text>`;
         } else {
-            s += `<text x="${W-padR+10}" y="${(y+rowH/2+5).toFixed(1)}" font-size="11" fill="#cbd5e1">—</text>`;
+            s += `<text x="${W-padR+12}" y="${(y+rowH/2+6).toFixed(1)}" font-size="13" fill="#cbd5e1">—</text>`;
         }
     }
 
     // ── Separador antes do YTD ──
-    const sepY = padT + 12 * rowStep + 5;
-    s += `<line x1="${padL-6}" y1="${sepY}" x2="${W-8}" y2="${sepY}" stroke="#cbd5e1" stroke-width="1.5"/>`;
-    s += `<text x="${padL-6}" y="${sepY+12}" font-size="9.5" font-weight="700" fill="#94a3b8" letter-spacing="0.5">ACUMULADO ATÉ ${MESES[ultimoMes].toUpperCase()}</text>`;
+    const sepY = padT + 12 * rowStep + 6;
+    s += `<line x1="${padL-8}" y1="${sepY}" x2="${W-8}" y2="${sepY}" stroke="#cbd5e1" stroke-width="2"/>`;
+    s += `<text x="${padL-8}" y="${sepY+15}" font-size="12" font-weight="700" fill="#94a3b8" letter-spacing="0.5">ACUMULADO ATÉ ${MESES[ultimoMes].toUpperCase()}</text>`;
 
     // ── Linha YTD ──
-    const ytdH = rowH + 6;
-    const ytdY = sepY + 18;
+    const ytdH = rowH + 8;
+    const ytdY = sepY + 22;
     const ytdPct = ytdTarget > 0 ? ytdVal / ytdTarget : 0;
     const ytdCor = ytdPct >= 1.0 ? '#16a34a' : ytdPct >= 0.85 ? '#d97706' : '#dc2626';
     const ytdBarW = Math.min((ytdVal / scaleYTD) * trackW, trackW);
 
-    s += `<rect x="${padL}" y="${ytdY}" width="${trackW}" height="${ytdH}" rx="4" fill="#e2e8f0"/>`;
-    s += `<rect x="${padL}" y="${ytdY}" width="${ytdBarW.toFixed(1)}" height="${ytdH}" rx="4" fill="${ytdCor}" opacity="0.88"/>`;
-    s += `<line x1="${xPaceYTD.toFixed(1)}" y1="${ytdY-2}" x2="${xPaceYTD.toFixed(1)}" y2="${ytdY+ytdH+2}" stroke="#1d4ed8" stroke-width="3.5" stroke-linecap="round"/>`;
+    s += `<rect x="${padL}" y="${ytdY}" width="${trackW}" height="${ytdH}" rx="5" fill="#e2e8f0"/>`;
+    s += `<rect x="${padL}" y="${ytdY}" width="${ytdBarW.toFixed(1)}" height="${ytdH}" rx="5" fill="${ytdCor}" opacity="0.90"/>`;
+    s += `<line x1="${xPaceYTD.toFixed(1)}" y1="${ytdY-3}" x2="${xPaceYTD.toFixed(1)}" y2="${ytdY+ytdH+3}" stroke="#1d4ed8" stroke-width="5" stroke-linecap="round"/>`;
 
-    s += `<text x="${padL-6}" y="${(ytdY+ytdH/2+5).toFixed(1)}" text-anchor="end" font-size="12.5" font-weight="800" fill="#1e293b">YTD</text>`;
+    s += `<text x="${padL-8}" y="${(ytdY+ytdH/2+6).toFixed(1)}" text-anchor="end" font-size="16" font-weight="800" fill="#1e293b">YTD</text>`;
     const ytdLbl = ytdVal >= 1e9 ? 'R$ '+(ytdVal/1e9).toFixed(2)+' bi' : 'R$ '+(ytdVal/1e6).toFixed(0)+' mi';
-    s += `<text x="${W-padR+10}" y="${(ytdY+ytdH/2+1).toFixed(1)}" font-size="12.5" font-weight="800" fill="${ytdCor}">${ytdLbl}</text>`;
-    s += `<text x="${W-padR+10}" y="${(ytdY+ytdH/2+16).toFixed(1)}" font-size="11" font-weight="600" fill="${ytdCor}">${(ytdPct*100).toFixed(1).replace('.',',')}% do ritmo</text>`;
+    s += `<text x="${W-padR+12}" y="${(ytdY+ytdH/2+2).toFixed(1)}" font-size="16" font-weight="800" fill="${ytdCor}">${ytdLbl}</text>`;
+    s += `<text x="${W-padR+12}" y="${(ytdY+ytdH/2+19).toFixed(1)}" font-size="13.5" font-weight="600" fill="${ytdCor}">${(ytdPct*100).toFixed(1).replace('.',',')}% do ritmo</text>`;
 
     // ── Legenda ──
-    const lgY = ytdY + ytdH + 16;
+    const lgY = ytdY + ytdH + 18;
     const items = [
         { cor:'#16a34a', txt:'≥ 100% do ritmo' },
         { cor:'#d97706', txt:'85 – 99%' },
@@ -1055,12 +1055,12 @@ function desenharBulletChart(filtradosRealizado, filtPrevFull) {
     ];
     let lx = padL;
     items.forEach(it => {
-        s += `<rect x="${lx}" y="${lgY}" width="11" height="11" rx="2" fill="${it.cor}"/>`;
-        s += `<text x="${lx+15}" y="${lgY+9}" font-size="10" fill="#64748b">${it.txt}</text>`;
-        lx += 110;
+        s += `<rect x="${lx}" y="${lgY}" width="14" height="14" rx="3" fill="${it.cor}"/>`;
+        s += `<text x="${lx+20}" y="${lgY+11}" font-size="12.5" fill="#64748b">${it.txt}</text>`;
+        lx += 140;
     });
-    s += `<line x1="${lx+2}" y1="${lgY+5}" x2="${lx+16}" y2="${lgY+5}" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>`;
-    s += `<text x="${lx+20}" y="${lgY+9}" font-size="10" fill="#64748b">Ritmo (meta ÷ 12)</text>`;
+    s += `<line x1="${lx+2}" y1="${lgY+7}" x2="${lx+20}" y2="${lgY+7}" stroke="#1d4ed8" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<text x="${lx+26}" y="${lgY+11}" font-size="12.5" fill="#64748b">Ritmo (meta ÷ 12)</text>`;
 
     svg.innerHTML = s;
 
