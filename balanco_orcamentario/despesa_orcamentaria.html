@@ -543,6 +543,14 @@
             </div>
         </div>
 
+        <!-- TREEMAP (antes das tabelas) -->
+        <div class="graficos-section" style="margin-bottom:16px;">
+            <div class="grafico-box" style="width:100%;">
+                <div class="grafico-titulo">Composição da Despesa Liquidada por GND</div>
+                <div id="treemapChart" style="width:100%;height:300px;"></div>
+            </div>
+        </div>
+
         <!-- FILTROS FUNÇÃO / SUBFUNÇÃO -->
         <div class="filtros-funcao">
             <div class="filtro-funcao-item">
@@ -613,14 +621,6 @@
                 <svg id="lineChart" class="line-chart-svg" viewBox="0 0 700 200" preserveAspectRatio="xMidYMid meet"></svg>
             </div>
         </div>
-        <!-- TREEMAP (abaixo da evolução mensal) -->
-        <div class="graficos-section" style="margin-top:20px;">
-            <div class="grafico-box" style="width:100%;">
-                <div class="grafico-titulo">Composição da Despesa</div>
-                <div id="treemapChart" style="width:100%;height:300px;"></div>
-            </div>
-        </div>
-
         <!-- GRÁFICO DE PIZZA — Despesa Liquidada por Função / Subfunção -->
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-box" style="width:100%;">
@@ -1068,37 +1068,6 @@ function desenharTreemap(dados) {
     }, true);
 }
 
-function desenharTreemap(dados) {
-    const container = document.getElementById('treemapChart');
-    if (!dados.length) { container.innerHTML = '<div style="color:#999;text-align:center;padding:20px;width:100%;">Sem dados</div>'; return; }
-    const total = dados.reduce((s, d) => s + Math.abs(d.valor), 0);
-    if (total === 0) { container.innerHTML = '<div style="color:#999;text-align:center;padding:20px;width:100%;">Sem dados</div>'; return; }
-
-    dados.sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
-
-    // Limitar ao top 7 categorias; agrupar restante em "Outros"
-    const MAX_ITEMS = 7;
-    let principais = dados.slice(0, MAX_ITEMS);
-    const restante = dados.slice(MAX_ITEMS);
-    if (restante.length > 0) {
-        const outrosValor = restante.reduce((s, d) => s + Math.abs(d.valor), 0);
-        principais.push({ nome: 'Outros', valor: outrosValor });
-    }
-
-    let html = '';
-    principais.forEach((d, i) => {
-        const pct = (Math.abs(d.valor) / total) * 100;
-        if (pct < 0.5) return;
-        const cor = CORES_TM[i % CORES_TM.length];
-        const pctFmt = pct.toFixed(1) + '%';
-        html += `<div class="treemap-item" style="flex:${pct} 1 0%;background:${cor};"
-            title="${d.nome}: ${fmtMoeda(d.valor)} (${pctFmt})">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;font-size:${pct > 12 ? '12' : '10'}px;">${pct > 4 ? d.nome : ''}</span>
-            <small>${pctFmt}</small>
-        </div>`;
-    });
-    container.innerHTML = html;
-}
 
 function desenharLinhas(dadosMensaisAtual, dadosMensaisAnterior) {
     const svg = document.getElementById('lineChart');
@@ -1288,13 +1257,13 @@ function atualizarGraficos(filtrados) {
     desenharBarras(Object.entries(porGnd).map(([nome, valor]) => ({ nome, valor }))
         .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)));
 
-    // Treemap: por despesa (ano atual, liquidada)
-    const porDesp = {};
+    // Treemap: por GND (ano atual, liquidada) — categorias amplas para boa visualização
+    const porGndTm = {};
     filtrados.filter(r => r.coexercicio === ANO_ATUAL && isLiquidada(r)).forEach(r => {
-        const nome = r.nome_despesa || r.despesa || '?';
-        if (nome && nome !== '?') porDesp[nome] = (porDesp[nome] || 0) + r.saldo;
+        const nome = r.nome_gnd || r.gnd || '?';
+        if (nome && nome !== '?') porGndTm[nome] = (porGndTm[nome] || 0) + r.saldo;
     });
-    desenharTreemap(Object.entries(porDesp).map(([nome, valor]) => ({ nome, valor })));
+    desenharTreemap(Object.entries(porGndTm).map(([nome, valor]) => ({ nome, valor })));
 
     // Linha: liquidada mensal acumulada
     const mensalAtual = {}, mensalAnterior = {};

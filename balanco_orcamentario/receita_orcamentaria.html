@@ -540,6 +540,14 @@
             </div>
         </div>
 
+        <!-- TREEMAP (antes da tabela) -->
+        <div class="graficos-section" style="margin-bottom:16px;">
+            <div class="grafico-box" style="width:100%;">
+                <div class="grafico-titulo">Composição da Receita por Espécie</div>
+                <div id="treemapChart" style="width:100%;height:300px;"></div>
+            </div>
+        </div>
+
         <div class="tabela-container">
             <div class="tabela-scroll">
                 <table>
@@ -554,13 +562,6 @@
                     </thead>
                     <tbody id="tabelaBody"></tbody>
                 </table>
-            </div>
-        </div>
-        <!-- TREEMAP (abaixo da tabela) -->
-        <div class="graficos-section" style="margin-top:20px;">
-            <div class="grafico-box" style="width:100%;">
-                <div class="grafico-titulo">Composição da Receita (Tipo)</div>
-                <div id="treemapChart" style="width:100%;height:300px;"></div>
             </div>
         </div>
 
@@ -926,40 +927,7 @@ function desenharTreemap(dados) {
     }, true);
 }
 
-// ============ TREEMAP ============
-function desenharTreemap(dados) {
-    const container = document.getElementById('treemapChart');
-    if (!dados.length) { container.innerHTML = '<div style="color:#999;text-align:center;padding:20px;width:100%;">Sem dados</div>'; return; }
-
-    const total = dados.reduce((s, d) => s + Math.abs(d.valor), 0);
-    if (total === 0) { container.innerHTML = '<div style="color:#999;text-align:center;padding:20px;width:100%;">Sem dados</div>'; return; }
-
-    dados.sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
-
-    // Limitar ao top 7 categorias; agrupar restante em "Outros"
-    const MAX_ITEMS = 7;
-    let principais = dados.slice(0, MAX_ITEMS);
-    const restante = dados.slice(MAX_ITEMS);
-    if (restante.length > 0) {
-        const outrosValor = restante.reduce((s, d) => s + Math.abs(d.valor), 0);
-        principais.push({ nome: 'Outros', valor: outrosValor });
-    }
-
-    let html = '';
-    principais.forEach((d, i) => {
-        const pct = (Math.abs(d.valor) / total) * 100;
-        if (pct < 0.5) return;
-        const cor = CORES_TREEMAP[i % CORES_TREEMAP.length];
-        const valFmt = fmtMoeda(d.valor);
-        const pctFmt = pct.toFixed(1) + '%';
-        html += `<div class="treemap-item" style="flex:${pct} 1 0%;background:${cor};"
-            title="${d.nome}: ${valFmt} (${pctFmt})">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;font-size:${pct > 12 ? '12' : '10'}px;">${pct > 4 ? d.nome : ''}</span>
-            <small>${pctFmt}</small>
-        </div>`;
-    });
-    container.innerHTML = html;
-}
+// ============ TREEMAP (antiga função HTML/CSS removida — substituída por ECharts) ============
 
 // ============ GRÁFICO CORRIDA PARA A META ============
 function desenharCorridaMeta(filtradosRealizado, filtPrevFull) {
@@ -1307,14 +1275,13 @@ function atualizarGraficos(filtradosRealizado, filtPrevFull) {
         .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
     desenharBarras(barData);
 
-    // Treemap: por tipo de receita (ano atual)
-    const porTipo = {};
+    // Treemap: por espécie da receita — categorias amplas para boa visualização
+    const porEspTm = {};
     filtradosRealizado.filter(r => r.coexercicio === ANO_ATUAL).forEach(r => {
-        const nome = r.nome_tipo_receita || r.tipo_receita || r.nome_especie_receita || '?';
-        if (nome && nome !== '?') porTipo[nome] = (porTipo[nome] || 0) + r.saldo;
+        const nome = r.nome_especie_receita || r.especie_receita || '?';
+        if (nome && nome !== '?') porEspTm[nome] = (porEspTm[nome] || 0) + r.saldo;
     });
-    const tmData = Object.entries(porTipo).map(([nome, valor]) => ({ nome, valor }));
-    desenharTreemap(tmData);
+    desenharTreemap(Object.entries(porEspTm).map(([nome, valor]) => ({ nome, valor })));
 
     // Corrida para a Meta
     desenharCorridaMeta(filtradosRealizado, filtPrevFull);
