@@ -903,7 +903,7 @@ function desenharTreemap(dados) {
         cTreemapReceita = echarts.init(el);
         window.addEventListener('resize', function() { cTreemapReceita && cTreemapReceita.resize(); });
     }
-    const cores = ['#006633','#1b5e20','#2e7d32','#388e3c','#43a047','#4caf50','#66bb6a','#fbbf24','#94a3b8'];
+    const cores = ['#006633','#1565c0','#b45309','#6d28d9','#0e7490','#9a3412','#1b5e20','#0369a1','#92400e'];
     const total = dados.reduce(function(s, d) { return s + Math.abs(d.valor); }, 0);
     const tmData = dados
         .filter(function(d) { return total > 0 && Math.abs(d.valor) / total > 0.003; })
