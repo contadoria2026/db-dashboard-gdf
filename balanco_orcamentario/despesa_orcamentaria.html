@@ -528,11 +528,11 @@
             </div>
         </div>
 
-        <!-- COMPOSIÇÃO MENSAL (stacked) + GAUGE -->
+        <!-- BARRAS + GAUGE (lado a lado) -->
         <div class="graficos-topo">
             <div class="grafico-barras-box">
-                <div class="grafico-titulo">Composição Mensal da Despesa Liquidada por GND</div>
-                <div id="chart-stacked" style="width:100%;height:280px;"></div>
+                <div class="grafico-titulo">Liquidado por GND (2026)</div>
+                <div id="barChart"></div>
             </div>
             <div class="gauge-box">
                 <div class="grafico-titulo">Execução Total</div>
@@ -617,7 +617,7 @@
         <div class="graficos-section" style="margin-top:20px;">
             <div class="grafico-box" style="width:100%;">
                 <div class="grafico-titulo">Composição da Despesa</div>
-                <div class="treemap-container" id="treemapChart"></div>
+                <div id="treemapChart" style="width:100%;height:300px;"></div>
             </div>
         </div>
 
@@ -1016,82 +1016,56 @@ const CORES_TM = ['#006633','#1b5e20','#2e7d32','#388e3c','#43a047','#4caf50','#
     '#0277bd','#0288d1','#039be5','#03a9f4','#558b2f','#689f38'];
 
 // ============ GRÁFICOS ============
-let cStackedDespesa = null;
-
-function desenharStackedDespesa(filtrados) {
-    const el = document.getElementById('chart-stacked');
-    if (!el) return;
-    if (!cStackedDespesa) {
-        cStackedDespesa = echarts.init(el);
-        window.addEventListener('resize', function() { cStackedDespesa && cStackedDespesa.resize(); });
-    }
-
-    const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const labels = MESES.slice(0, MAX_MES);
-
-    // Agrupar por GND e mês (liquidada, ANO_ATUAL)
-    const porGndMes = {}, totaisPorGnd = {};
-    filtrados
-        .filter(r => r.coexercicio === ANO_ATUAL && isLiquidada(r))
-        .forEach(r => {
-            const nome = r.nome_gnd || r.gnd || 'Outros';
-            if (!porGndMes[nome]) porGndMes[nome] = {};
-            porGndMes[nome][r.inmes] = (porGndMes[nome][r.inmes] || 0) + r.saldo;
-            totaisPorGnd[nome] = (totaisPorGnd[nome] || 0) + r.saldo;
-        });
-
-    // Ordenar por total decrescente
-    const sorted = Object.entries(totaisPorGnd).sort((a, b) => b[1] - a[1]);
-    const TOP = 7;
-    const topNomes = sorted.slice(0, TOP).map(([k]) => k);
-    const restNomes = sorted.slice(TOP).map(([k]) => k);
-    if (restNomes.length > 0) {
-        porGndMes['Outros'] = porGndMes['Outros'] || {};
-        restNomes.forEach(nome => {
-            Object.entries(porGndMes[nome] || {}).forEach(([mes, val]) => {
-                porGndMes['Outros'][mes] = (porGndMes['Outros'][mes] || 0) + val;
-            });
-        });
-        topNomes.push('Outros');
-    }
-
-    const cores = ['#006633','#2e7d32','#43a047','#66bb6a','#a5d6a7','#fbbf24','#94a3b8','#64748b'];
-
-    const series = topNomes.map((nome, i) => ({
-        name: nome,
-        type: 'bar',
-        stack: 'comp',
-        data: Array.from({ length: MAX_MES }, (_, idx) => {
-            const val = (porGndMes[nome] || {})[idx + 1] || 0;
-            return val > 0 ? +(val / 1e6).toFixed(2) : 0;
-        }),
-        itemStyle: { color: cores[i % cores.length] },
-        emphasis: { focus: 'series' },
-    }));
-
-    cStackedDespesa.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                let s = '<strong>' + params[0].name + '</strong><br/>';
-                params.forEach(function(p) {
-                    if (p.value > 0) s += p.marker + ' ' + p.seriesName + ': R$ ' + p.value.toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + ' mi<br/>';
-                });
-                return s;
-            }
-        },
-        legend: { top: 0, textStyle: { fontSize: 10, fontFamily: 'Segoe UI, sans-serif' } },
-        grid: { left: 70, right: 16, top: 40, bottom: 30 },
-        xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10, fontFamily: 'Segoe UI, sans-serif' } },
-        yAxis: { type: 'value', axisLabel: { fontSize: 10, formatter: function(v) { return v.toLocaleString('pt-BR') + ' mi'; } }, splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } } },
-        series: series,
-        animationDuration: 800,
-    }, true);
+function desenharBarras(dados) {
+    const container = document.getElementById('barChart');
+    if (!dados.length) { container.innerHTML = '<div style="color:#999;text-align:center;padding:20px;">Sem dados</div>'; return; }
+    const maxVal = Math.max(...dados.map(d => Math.abs(d.valor)));
+    let html = '';
+    dados.slice(0, 10).forEach((d, i) => {
+        const pct = maxVal > 0 ? (Math.abs(d.valor) / maxVal * 100) : 0;
+        const cor = CORES_BAR[i % CORES_BAR.length];
+        const valFmt = fmtMoeda(d.valor);
+        html += `<div class="bar-row">
+            <div class="bar-label" title="${d.nome}">${d.nome}</div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:${Math.max(pct, 2)}%;background:${cor};"></div>
+            </div>
+            <span class="bar-valor-fora">${valFmt}</span>
+        </div>`;
+    });
+    container.innerHTML = html;
 }
 
-function desenharBarras(dados) {
-    // mantido para compatibilidade — não mais usado na tela principal
+let cTreemapDespesa = null;
+function desenharTreemap(dados) {
+    const el = document.getElementById('treemapChart');
+    if (!el) return;
+    if (!cTreemapDespesa) {
+        cTreemapDespesa = echarts.init(el);
+        window.addEventListener('resize', function() { cTreemapDespesa && cTreemapDespesa.resize(); });
+    }
+    const cores = ['#006633','#1b5e20','#2e7d32','#388e3c','#43a047','#4caf50','#66bb6a','#fbbf24','#94a3b8'];
+    const total = dados.reduce(function(s, d) { return s + Math.abs(d.valor); }, 0);
+    const tmData = dados
+        .filter(function(d) { return total > 0 && Math.abs(d.valor) / total > 0.003; })
+        .sort(function(a, b) { return Math.abs(b.valor) - Math.abs(a.valor); })
+        .map(function(d, i) {
+            return {
+                name: d.nome,
+                value: Math.round(Math.abs(d.valor) / 1e6),
+                itemStyle: { color: cores[i % cores.length] }
+            };
+        });
+    cTreemapDespesa.setOption({
+        tooltip: { formatter: function(p) { return '<strong>' + p.name + '</strong><br/>R$ ' + p.value.toLocaleString('pt-BR') + ' mi'; } },
+        series: [{
+            type: 'treemap', roam: false, width: '100%', height: '100%',
+            label: { show: true, fontSize: 12, fontWeight: 600, fontFamily: 'Segoe UI, sans-serif',
+                formatter: function(p) { return p.name + '\nR$ ' + p.value.toLocaleString('pt-BR') + ' mi'; }, lineHeight: 18 },
+            itemStyle: { borderColor: '#fff', borderWidth: 3, gapWidth: 2 },
+            data: tmData, animationDuration: 800,
+        }]
+    }, true);
 }
 
 function desenharTreemap(dados) {
@@ -1305,8 +1279,14 @@ function desenharPizza(dados, titulo) {
 }
 
 function atualizarGraficos(filtrados) {
-    // Stacked: composição mensal por GND (liquidada)
-    desenharStackedDespesa(filtrados);
+    // Barras: liquidada por GND (ano atual)
+    const porGnd = {};
+    filtrados.filter(r => r.coexercicio === ANO_ATUAL && isLiquidada(r)).forEach(r => {
+        const nome = r.nome_gnd || r.gnd || '?';
+        porGnd[nome] = (porGnd[nome] || 0) + r.saldo;
+    });
+    desenharBarras(Object.entries(porGnd).map(([nome, valor]) => ({ nome, valor }))
+        .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)));
 
     // Treemap: por despesa (ano atual, liquidada)
     const porDesp = {};
