@@ -203,12 +203,12 @@
         .card-sub .tag-up { color: #2e7d32; font-weight: 600; }
         .card-sub .tag-down { color: #d32f2f; font-weight: 600; }
 
-        /* GAUGE + BARRAS — linha abaixo dos cards */
+        /* TREEMAP + GAUGE — linha abaixo dos cards */
         .graficos-topo {
             display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
             align-items: stretch;
         }
-        .grafico-barras-box {
+        .treemap-topo-box {
             flex: 1; min-width: 300px;
             background: #fff; border-radius: 10px;
             padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -525,22 +525,18 @@
             <svg id="lineChart" class="line-chart-svg" viewBox="0 0 880 440" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
 
-        <!-- GAUGE -->
+        <!-- TREEMAP + GAUGE (lado a lado) -->
         <div class="graficos-topo">
+            <div class="treemap-topo-box">
+                <div class="grafico-titulo">Composição da Receita por Espécie</div>
+                <div id="treemapChart" style="width:100%;height:280px;"></div>
+            </div>
             <div class="gauge-box">
                 <div class="grafico-titulo">Execução Total</div>
                 <div style="font-size:11px;color:#888;margin-bottom:8px;">% do Previsto/Dotado</div>
                 <svg id="gaugeChart" viewBox="0 0 300 200" style="width:260px;height:auto;"></svg>
                 <div class="gauge-valor" id="cardExecucao" style="color:#d32f2f;">0,00%</div>
                 <div class="gauge-sub" id="cardExecSub">&nbsp;</div>
-            </div>
-        </div>
-
-        <!-- TREEMAP (antes da tabela) -->
-        <div class="graficos-section" style="margin-bottom:16px;">
-            <div class="grafico-box" style="width:100%;">
-                <div class="grafico-titulo">Composição da Receita por Espécie</div>
-                <div id="treemapChart" style="width:100%;height:300px;"></div>
             </div>
         </div>
 
