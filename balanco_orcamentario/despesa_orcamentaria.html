@@ -528,12 +528,8 @@
             </div>
         </div>
 
-        <!-- BARRAS + GAUGE (lado a lado) -->
+        <!-- GAUGE -->
         <div class="graficos-topo">
-            <div class="grafico-barras-box">
-                <div class="grafico-titulo">Liquidado por GND (2026)</div>
-                <div id="barChart"></div>
-            </div>
             <div class="gauge-box">
                 <div class="grafico-titulo">Execução Total</div>
                 <div style="font-size:11px;color:#888;margin-bottom:8px;">% do Previsto/Dotado</div>
@@ -1248,15 +1244,6 @@ function desenharPizza(dados, titulo) {
 }
 
 function atualizarGraficos(filtrados) {
-    // Barras: liquidada por GND (ano atual)
-    const porGnd = {};
-    filtrados.filter(r => r.coexercicio === ANO_ATUAL && isLiquidada(r)).forEach(r => {
-        const nome = r.nome_gnd || r.gnd || '?';
-        porGnd[nome] = (porGnd[nome] || 0) + r.saldo;
-    });
-    desenharBarras(Object.entries(porGnd).map(([nome, valor]) => ({ nome, valor }))
-        .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)));
-
     // Treemap: por GND (ano atual, liquidada) — categorias amplas para boa visualização
     const porGndTm = {};
     filtrados.filter(r => r.coexercicio === ANO_ATUAL && isLiquidada(r)).forEach(r => {

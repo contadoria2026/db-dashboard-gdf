@@ -525,12 +525,8 @@
             <svg id="lineChart" class="line-chart-svg" viewBox="0 0 880 440" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
 
-        <!-- BARRAS + GAUGE (lado a lado) -->
+        <!-- GAUGE -->
         <div class="graficos-topo">
-            <div class="grafico-barras-box">
-                <div class="grafico-titulo">Realizado por Espécie da Receita</div>
-                <div id="barChart"></div>
-            </div>
             <div class="gauge-box">
                 <div class="grafico-titulo">Execução Total</div>
                 <div style="font-size:11px;color:#888;margin-bottom:8px;">% do Previsto/Dotado</div>
@@ -1265,16 +1261,6 @@ function atualizarCards(filtradosRealizado, filtradosPrevisao, mesSel) {
 
 // ============ ATUALIZAR GRÁFICOS ============
 function atualizarGraficos(filtradosRealizado, filtPrevFull) {
-    // Barras: realizado por espécie da receita (ano atual)
-    const porEsp = {};
-    filtradosRealizado.filter(r => r.coexercicio === ANO_ATUAL).forEach(r => {
-        const nome = r.nome_especie_receita || r.especie_receita || '?';
-        if (nome && nome !== '?') porEsp[nome] = (porEsp[nome] || 0) + r.saldo;
-    });
-    const barData = Object.entries(porEsp).map(([nome, valor]) => ({ nome, valor }))
-        .sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
-    desenharBarras(barData);
-
     // Treemap: por espécie da receita — categorias amplas para boa visualização
     const porEspTm = {};
     filtradosRealizado.filter(r => r.coexercicio === ANO_ATUAL).forEach(r => {
