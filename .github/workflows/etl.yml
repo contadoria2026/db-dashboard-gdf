@@ -19,19 +19,6 @@ jobs:
       - name: Instalar dependencias Python
         run: py -m pip install -r requirements.txt
 
-      - name: Debug ambiente
-        shell: powershell
-        env:
-          ORACLE_CLIENT_PATH: ${{ secrets.ORACLE_CLIENT_PATH }}
-          DB_USER:            ${{ secrets.DB_USER }}
-          FCDF_PATH:          ${{ secrets.FCDF_PATH }}
-        run: |
-          echo "ORACLE_CLIENT_PATH = '$env:ORACLE_CLIENT_PATH'"
-          echo "DB_USER = '$env:DB_USER'"
-          echo "FCDF_PATH = '$env:FCDF_PATH'"
-          Test-Path $env:ORACLE_CLIENT_PATH
-          Test-Path $env:FCDF_PATH
-
       - name: Rodar ETL
         env:
           DB_USER:                  ${{ secrets.DB_USER }}
