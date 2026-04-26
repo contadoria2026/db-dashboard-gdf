@@ -591,7 +591,26 @@ function renderTable(cols){
     });
   }
 
+  // Contingência: busca Supabase se GitHub Pages falhar
+  var SUPA_URL = 'https://otrlwfdtdrqpynemoexj.supabase.co';
+  var SUPA_KEY = 'sb_publishable_UKK5VWsrCXd1_zRR8tP16g_vySXJN5a';
+  function fetchSupabaseRCL() {
+    var ano = new Date().getFullYear();
+    return fetch(SUPA_URL + '/rest/v1/rcl?select=dados,atualizado_em&ano=eq.' + ano, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Supabase HTTP ' + r.status);
+      return r.json();
+    }).then(function(rows) {
+      if (!rows || !rows.length) throw new Error('Supabase: nenhum dado RCL para ' + ano);
+      var json = rows[0].dados;
+      json.atualizado_em = rows[0].atualizado_em;
+      return json;
+    });
+  }
+
   fetchJsonGz('../data/gz/rcl.json.gz')
+    .catch(function() { return fetchSupabaseRCL(); })
     .then(function(json) {
       D = json;
       document.body.removeChild(overlay);

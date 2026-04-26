@@ -780,7 +780,31 @@ function init(json) {
     }).then(function(t) { return JSON.parse(t); });
   }
 
+  // Contingência: busca Supabase se GitHub Pages falhar
+  var SUPA_URL = 'https://otrlwfdtdrqpynemoexj.supabase.co';
+  var SUPA_KEY = 'sb_publishable_UKK5VWsrCXd1_zRR8tP16g_vySXJN5a';
+  var SUPA_PAGE = 1000;
+  function fetchSupabaseRAP() {
+    var all = [];
+    function next(offset) {
+      return fetch(SUPA_URL + '/rest/v1/restos_a_pagar?select=*&offset=' + offset + '&limit=' + SUPA_PAGE, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      }).then(function(r) {
+        if (!r.ok) throw new Error('Supabase HTTP ' + r.status);
+        return r.json();
+      }).then(function(data) {
+        all = all.concat(data);
+        return data.length === SUPA_PAGE ? next(offset + SUPA_PAGE) : all;
+      });
+    }
+    return next(0).then(function(data) {
+      var atualizado_em = data.reduce(function(m, r) { return r.atualizado_em > m ? r.atualizado_em : m; }, '');
+      return { registros: data, atualizado_em: atualizado_em };
+    });
+  }
+
   fetchJsonGz('../data/gz/restos_a_pagar.json.gz')
+    .catch(function() { return fetchSupabaseRAP(); })
     .then(function(json) {
       document.body.removeChild(ov);
       init(json);
