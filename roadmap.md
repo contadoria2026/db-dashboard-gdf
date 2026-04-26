@@ -1,6 +1,6 @@
 # Roadmap — Dashboards Fiscais GDF
 
-> Registro dos planos de evolução do projeto. Atualizado em 25/04/2026.
+> Registro dos planos de evolução do projeto. Atualizado em 26/04/2026.
 
 ---
 
@@ -11,6 +11,7 @@
 - Runner self-hosted com GitHub Actions (schedule diário 06:00 Brasília)
 - Treemap ECharts em receita e despesa (composição por espécie/GND)
 - Gauge + treemap lado a lado acima dos dados detalhados
+- Supabase como contingência: ETL faz upsert paralelo nas 4 tabelas; dashboards buscam gz do GitHub Pages e caem automaticamente no Supabase em caso de falha (testado e validado em 26/04/2026)
 
 ---
 
@@ -45,68 +46,25 @@ git push origin main
 
 ---
 
-## 📌 Pendente — Supabase como Contingência (arquitetura paralela)
+## ✅ Concluído — Supabase como Contingência
 
-### Objetivo
-Criar uma segunda estrutura paralela usando Supabase como back-end, sem alterar a estrutura atual. A estrutura atual permanece em produção enquanto a nova é validada.
-
-### Arquitetura
+### Arquitetura implementada
 
 ```
 ETL (etl.py)
-  ├── gera gz  →  commit no GitHub  →  GitHub Pages  (atual, produção)
-  └── INSERT   →  Supabase API      →  GitHub Pages  (paralela, validação)
+  ├── gera gz  →  commit no GitHub  →  GitHub Pages  (produção, fonte primária)
+  └── upsert   →  Supabase API      →  fallback automático nos HTMLs
 ```
 
-### Implementação
-1. Criar projeto no Supabase (supabase.com — free tier)
-2. Criar tabelas PostgreSQL espelhando os datasets atuais:
-   - `receita` (colunas do receita.json.gz)
-   - `despesa` (colunas do despesa.json.gz)
-   - `rcl` (colunas do rcl.json.gz)
-   - `restos_a_pagar` (colunas do restos_a_pagar.json.gz)
-3. Adicionar secrets no GitHub: `SUPABASE_URL` e `SUPABASE_KEY`
-4. Adaptar `etl.py`: ao final da geração dos gz, adicionar bloco de `upsert` no Supabase via `supabase-py`
-5. Criar versão paralela dos HTMLs (ex: `receita_supabase.html`) que busca dados na API REST do Supabase em vez dos gz
-6. Validar dados lado a lado com a versão atual
-7. Quando validado: promover versão Supabase para produção, desligar geração de gz
+### O que foi feito
+- Projeto Supabase criado (free tier) com 4 tabelas: `receita`, `despesa`, `rcl`, `restos_a_pagar`
+- Secrets `SUPABASE_URL` e `SUPABASE_KEY` configurados no GitHub
+- `etl.py` adaptado: upsert paralelo no Supabase após gerar os gz
+- Dashboards atualizados: tentam gz primeiro; se falhar, buscam Supabase automaticamente (sem intervenção do usuário)
+- Testado e validado em 26/04/2026 via bloqueio de URL no DevTools
 
-### Estimativa de recursos (free tier Supabase)
-| Recurso | Disponível | Estimado no projeto |
-|---|---|---|
-| Armazenamento | 500 MB | ~268 MB (1 ano) |
-| Banda/mês | 5 GB | ~1–1,2 GB |
-
----
-
-## 📌 Pendente — Estratégia Híbrida de Armazenamento (ano corrente + histórico)
-
-### Objetivo
-Manter o Supabase sempre leve (só ano corrente) e arquivar anos anteriores como gz no GitHub. HTML com seletor de ano.
-
-### Funcionamento
-- **Ano corrente** → dados no Supabase (frescos, filtráveis via API)
-- **Anos anteriores** → gz arquivados em `data/gz/{ano}/` no GitHub
-
-### Lógica no HTML
-```javascript
-if (anoSelecionado === anoCorrente) {
-    // busca Supabase com filtro de mês
-    fetch(`${SUPABASE_URL}/rest/v1/despesa?inmes=lte.${mes}&select=*`, { headers })
-} else {
-    // busca gz histórico do GitHub
-    fetch(`https://raw.githubusercontent.com/.../data/gz/${anoSelecionado}/despesa.json.gz`)
-}
-```
-
-### Virada de ano (janeiro de cada ano)
-1. Exportar dados do ano encerrado do Supabase para gz
-2. Commitar gz em `data/gz/{ano}/` no GitHub
-3. Limpar tabelas no Supabase para o novo ano
-4. Atualizar o seletor de anos nos HTMLs
-
-### Benefício
-O Supabase nunca ultrapassa ~268 MB → free tier sustentável indefinidamente.
+### Decisão de arquitetura
+GitHub Pages permanece como fonte primária. Supabase é contingência passiva — ativo só em caso de falha. Estratégia híbrida de armazenamento descartada: com teto de 4 anos e tabelas pequenas (exceto despesa), o free tier comporta todos os dados sem necessidade de arquivamento em gz.
 
 ---
 
