@@ -543,7 +543,7 @@ def upsert_restos_a_pagar_supabase(registros):
         import urllib.request, urllib.error
         atualizado_em = datetime.now(timezone.utc).isoformat()
         payload = [{**r, "atualizado_em": atualizado_em} for r in registros]
-        url = f"{SUPABASE_URL}/rest/v1/restos_a_pagar"
+        url = f"{SUPABASE_URL}/rest/v1/restos_a_pagar?on_conflict=ano,coug,cocontacontabil,cat,gnd,inmes"
         headers = {
             "apikey":        SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
