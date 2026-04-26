@@ -25,6 +25,9 @@ DB_MIN  = int(os.getenv("DB_MIN_CONNECTIONS", 1))
 DB_MAX  = int(os.getenv("DB_MAX_CONNECTIONS", 5))
 DB_INC  = int(os.getenv("DB_INCREMENT_CONNECTIONS", 1))
 
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -531,6 +534,30 @@ def build_restos_a_pagar_data(rows):
     return registros
 
 
+def upsert_restos_a_pagar_supabase(registros):
+    """Envia os registros de restos a pagar para o Supabase via upsert."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log.warning("  Supabase: SUPABASE_URL ou SUPABASE_KEY nao configurados. Pulando upsert.")
+        return
+    try:
+        from supabase import create_client
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        atualizado_em = datetime.now(timezone.utc).isoformat()
+        payload = [{**r, "atualizado_em": atualizado_em} for r in registros]
+        # upsert em lotes de 500 para evitar timeout
+        lote = 500
+        total = 0
+        for i in range(0, len(payload), lote):
+            client.table("restos_a_pagar").upsert(
+                payload[i:i+lote],
+                on_conflict="ano,coug,cocontacontabil,cat,gnd,inmes"
+            ).execute()
+            total += len(payload[i:i+lote])
+        log.info(f"  Supabase: {total} registros enviados para restos_a_pagar.")
+    except Exception as e:
+        log.error(f"  Supabase upsert falhou: {type(e).__name__}: {e}")
+
+
 def save_restos_a_pagar_gz(registros):
     payload = {
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
@@ -593,6 +620,7 @@ def run():
                     elif item.get("transform") == "restos_a_pagar":
                         registros = build_restos_a_pagar_data(data)
                         save_restos_a_pagar_gz(registros)
+                        upsert_restos_a_pagar_supabase(registros)
                         save_json(item["file"], data)
                     else:
                         save_json(item["file"], data)
