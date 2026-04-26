@@ -534,36 +534,102 @@ def build_restos_a_pagar_data(rows):
     return registros
 
 
+def _supabase_upsert(table, payload, on_conflict, batch_size=1000):
+    """Função genérica de upsert no Supabase via REST API."""
+    import urllib.request, urllib.error
+    url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={on_conflict}"
+    headers = {
+        "apikey":        SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type":  "application/json",
+        "Prefer":        "resolution=merge-duplicates",
+    }
+    total = 0
+    for i in range(0, len(payload), batch_size):
+        body = json.dumps(payload[i:i+batch_size], ensure_ascii=False).encode("utf-8")
+        req  = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                resp.read()
+            total += len(payload[i:i+batch_size])
+        except urllib.error.HTTPError as e:
+            body_err = e.read().decode("utf-8", errors="replace")
+            log.error(f"  Supabase [{table}] lote {i}: HTTP {e.code} - {body_err}")
+            raise
+    return total
+
+
 def upsert_restos_a_pagar_supabase(registros):
-    """Envia os registros de restos a pagar para o Supabase via REST API (sem lib externa)."""
+    """Envia restos a pagar para o Supabase."""
     if not SUPABASE_URL or not SUPABASE_KEY:
-        log.warning("  Supabase: SUPABASE_URL ou SUPABASE_KEY nao configurados. Pulando upsert.")
+        log.warning("  Supabase: nao configurado. Pulando upsert restos_a_pagar.")
         return
     try:
-        import urllib.request, urllib.error
         atualizado_em = datetime.now(timezone.utc).isoformat()
         payload = [{**r, "atualizado_em": atualizado_em} for r in registros]
-        url = f"{SUPABASE_URL}/rest/v1/restos_a_pagar?on_conflict=ano,coug,cocontacontabil,cat,gnd,inmes"
-        headers = {
-            "apikey":        SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type":  "application/json",
-            "Prefer":        "resolution=merge-duplicates",
-        }
-        lote = 500
-        total = 0
-        for i in range(0, len(payload), lote):
-            body = json.dumps(payload[i:i+lote], ensure_ascii=False).encode("utf-8")
-            req  = urllib.request.Request(url, data=body, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                resp.read()
-            total += len(payload[i:i+lote])
+        total = _supabase_upsert("restos_a_pagar", payload,
+                                  "ano,coug,cocontacontabil,cat,gnd,inmes")
         log.info(f"  Supabase: {total} registros enviados para restos_a_pagar.")
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        log.error(f"  Supabase upsert falhou: HTTP {e.code} - {body}")
     except Exception as e:
-        log.error(f"  Supabase upsert falhou: {type(e).__name__}: {e}")
+        log.error(f"  Supabase restos_a_pagar falhou: {type(e).__name__}: {e}")
+
+
+def upsert_receita_supabase(data):
+    """Envia receita orçamentária para o Supabase."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log.warning("  Supabase: nao configurado. Pulando upsert receita.")
+        return
+    try:
+        atualizado_em = datetime.now(timezone.utc).isoformat()
+        payload = []
+        for r in data:
+            row = {k: (v.strip() if isinstance(v, str) else v) for k, v in r.items()}
+            row["atualizado_em"] = atualizado_em
+            payload.append(row)
+        total = _supabase_upsert("receita", payload,
+                                  "coexercicio,inmes,coug,cocontacontabil,cocontacorrente")
+        log.info(f"  Supabase: {total} registros enviados para receita.")
+    except Exception as e:
+        log.error(f"  Supabase receita falhou: {type(e).__name__}: {e}")
+
+
+def upsert_despesa_supabase(data):
+    """Envia despesa orçamentária para o Supabase."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log.warning("  Supabase: nao configurado. Pulando upsert despesa.")
+        return
+    try:
+        atualizado_em = datetime.now(timezone.utc).isoformat()
+        payload = []
+        for r in data:
+            row = {k: (v.strip() if isinstance(v, str) else v) for k, v in r.items()}
+            row["cofonte"] = row.get("cofonte") or ""   # evita NULL no unique key
+            row["atualizado_em"] = atualizado_em
+            payload.append(row)
+        total = _supabase_upsert("despesa", payload,
+                                  "coexercicio,inmes,coug,cocontacontabil,despesa,cofonte",
+                                  batch_size=1000)
+        log.info(f"  Supabase: {total} registros enviados para despesa.")
+    except Exception as e:
+        log.error(f"  Supabase despesa falhou: {type(e).__name__}: {e}")
+
+
+def upsert_rcl_supabase(D_obj):
+    """Envia RCL para o Supabase como JSONB (1 linha por ano)."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        log.warning("  Supabase: nao configurado. Pulando upsert rcl.")
+        return
+    try:
+        ano = D_obj.get("ano") or datetime.now().year
+        payload = [{
+            "ano":          ano,
+            "dados":        D_obj,
+            "atualizado_em": datetime.now(timezone.utc).isoformat(),
+        }]
+        total = _supabase_upsert("rcl", payload, "ano")
+        log.info(f"  Supabase: RCL {ano} enviada ({total} linha).")
+    except Exception as e:
+        log.error(f"  Supabase rcl falhou: {type(e).__name__}: {e}")
 
 
 def save_restos_a_pagar_gz(registros):
@@ -624,12 +690,21 @@ def run():
                     if item.get("transform") == "rcl":
                         D_obj = build_rcl_data(data)
                         save_rcl_gz(D_obj)
+                        upsert_rcl_supabase(D_obj)
                         save_json(item["file"], data)
                     elif item.get("transform") == "restos_a_pagar":
                         registros = build_restos_a_pagar_data(data)
                         save_restos_a_pagar_gz(registros)
                         upsert_restos_a_pagar_supabase(registros)
                         save_json(item["file"], data)
+                    elif item["file"] == "receita.json":
+                        save_json(item["file"], data)
+                        save_json_gz(item["file"], data)
+                        upsert_receita_supabase(data)
+                    elif item["file"] == "despesa.json":
+                        save_json(item["file"], data)
+                        save_json_gz(item["file"], data)
+                        upsert_despesa_supabase(data)
                     else:
                         save_json(item["file"], data)
                         save_json_gz(item["file"], data)
