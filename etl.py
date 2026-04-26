@@ -535,23 +535,28 @@ def build_restos_a_pagar_data(rows):
 
 
 def upsert_restos_a_pagar_supabase(registros):
-    """Envia os registros de restos a pagar para o Supabase via upsert."""
+    """Envia os registros de restos a pagar para o Supabase via REST API (sem lib externa)."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         log.warning("  Supabase: SUPABASE_URL ou SUPABASE_KEY nao configurados. Pulando upsert.")
         return
     try:
-        from supabase import create_client
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        import urllib.request
         atualizado_em = datetime.now(timezone.utc).isoformat()
         payload = [{**r, "atualizado_em": atualizado_em} for r in registros]
-        # upsert em lotes de 500 para evitar timeout
+        url = f"{SUPABASE_URL}/rest/v1/restos_a_pagar"
+        headers = {
+            "apikey":        SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type":  "application/json",
+            "Prefer":        "resolution=merge-duplicates",
+        }
         lote = 500
         total = 0
         for i in range(0, len(payload), lote):
-            client.table("restos_a_pagar").upsert(
-                payload[i:i+lote],
-                on_conflict="ano,coug,cocontacontabil,cat,gnd,inmes"
-            ).execute()
+            body = json.dumps(payload[i:i+lote], ensure_ascii=False).encode("utf-8")
+            req  = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp.read()
             total += len(payload[i:i+lote])
         log.info(f"  Supabase: {total} registros enviados para restos_a_pagar.")
     except Exception as e:
