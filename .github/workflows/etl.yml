@@ -29,6 +29,8 @@ jobs:
           DB_INCREMENT_CONNECTIONS: ${{ secrets.DB_INCREMENT_CONNECTIONS }}
           ORACLE_CLIENT_PATH:       ${{ secrets.ORACLE_CLIENT_PATH }}
           FCDF_PATH:                ${{ secrets.FCDF_PATH }}
+          SUPABASE_URL:             ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:             ${{ secrets.SUPABASE_KEY }}
         run: py etl.py
 
       - name: Commitar JSON.GZ no repositorio
