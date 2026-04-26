@@ -540,7 +540,7 @@ def upsert_restos_a_pagar_supabase(registros):
         log.warning("  Supabase: SUPABASE_URL ou SUPABASE_KEY nao configurados. Pulando upsert.")
         return
     try:
-        import urllib.request
+        import urllib.request, urllib.error
         atualizado_em = datetime.now(timezone.utc).isoformat()
         payload = [{**r, "atualizado_em": atualizado_em} for r in registros]
         url = f"{SUPABASE_URL}/rest/v1/restos_a_pagar"
@@ -559,6 +559,9 @@ def upsert_restos_a_pagar_supabase(registros):
                 resp.read()
             total += len(payload[i:i+lote])
         log.info(f"  Supabase: {total} registros enviados para restos_a_pagar.")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        log.error(f"  Supabase upsert falhou: HTTP {e.code} - {body}")
     except Exception as e:
         log.error(f"  Supabase upsert falhou: {type(e).__name__}: {e}")
 

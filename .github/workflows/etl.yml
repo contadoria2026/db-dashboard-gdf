@@ -19,11 +19,6 @@ jobs:
       - name: Instalar dependencias Python
         run: py -m pip install -r requirements.txt
 
-      - name: Debug Supabase key
-        env:
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: py -c "import os; k=os.getenv('SUPABASE_KEY',''); print('Key starts with:', k[:20])"
-
       - name: Rodar ETL
         env:
           DB_USER:                  ${{ secrets.DB_USER }}
