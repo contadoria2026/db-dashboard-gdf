@@ -594,18 +594,33 @@ def upsert_receita_supabase(data):
 
 
 def upsert_despesa_supabase(data):
-    """Envia despesa orçamentária para o Supabase."""
+    """Envia despesa orçamentária para o Supabase (com deduplicação por chave única)."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         log.warning("  Supabase: nao configurado. Pulando upsert despesa.")
         return
     try:
         atualizado_em = datetime.now(timezone.utc).isoformat()
-        payload = []
+        # Deduplicar pela chave única, somando valores financeiros
+        agg = {}
+        meta = {}
         for r in data:
             row = {k: (v.strip() if isinstance(v, str) else v) for k, v in r.items()}
-            row["cofonte"] = row.get("cofonte") or ""   # evita NULL no unique key
-            row["atualizado_em"] = atualizado_em
+            row["cofonte"] = row.get("cofonte") or ""
+            key = (row.get("coexercicio"), row.get("inmes"), row.get("coug"),
+                   row.get("cocontacontabil"), row.get("despesa"), row.get("cofonte"))
+            if key not in agg:
+                agg[key]  = {"vadebito": 0.0, "vacredito": 0.0, "saldo": 0.0}
+                meta[key] = row
+            agg[key]["vadebito"]  += float(row.get("vadebito")  or 0)
+            agg[key]["vacredito"] += float(row.get("vacredito") or 0)
+            agg[key]["saldo"]     += float(row.get("saldo")     or 0)
+
+        payload = []
+        for key, vals in agg.items():
+            row = {**meta[key], **vals, "atualizado_em": atualizado_em}
             payload.append(row)
+
+        log.info(f"  Despesa: {len(data)} linhas Oracle -> {len(payload)} registros únicos.")
         total = _supabase_upsert("despesa", payload,
                                   "coexercicio,inmes,coug,cocontacontabil,despesa,cofonte",
                                   batch_size=1000)
