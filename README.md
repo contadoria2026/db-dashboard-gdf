@@ -11,14 +11,50 @@ Dashboards interativos de execução orçamentária do Governo do Distrito Feder
 ```
 Oracle (ORAPRD06)
     ↓ etl.py  (Python + oracledb)
-data/gz/*.json.gz  (comprimido com gzip, ~85% menor)
-    ↓ git push  (GitHub Actions — runner self-hosted)
-GitHub Pages
-    ↓ fetch + DecompressionStream
-Dashboards HTML  (browser descomprime em tempo real)
+    ├── data/gz/*.json.gz  →  git push  →  GitHub Pages  (fonte primária)
+    └── upsert             →  Supabase                   (contingência)
+                                  ↓
+                         Dashboards HTML
+                   (browser busca gz; se falhar, busca Supabase automaticamente)
 ```
 
 O ETL roda automaticamente todo dia às **06:00 (horário de Brasília)** via GitHub Actions com runner self-hosted instalado na estação de trabalho do James (james.coelho).
+
+---
+
+## Contingência Supabase
+
+O projeto utiliza o **Supabase** como camada de contingência para os dados. A cada execução do ETL, além de gerar os arquivos `json.gz` e commitá-los no GitHub, os dados são enviados simultaneamente para um banco PostgreSQL no Supabase via upsert.
+
+### Como funciona o fallback nos dashboards
+
+Cada dashboard tenta carregar os dados na seguinte ordem:
+
+1. **Busca o `json.gz` no GitHub Pages** (fonte primária — rápida e sem dependência externa)
+2. **Se falhar** (GitHub Pages indisponível, erro de rede) → **busca automaticamente no Supabase**
+3. O usuário não percebe a troca — o dashboard carrega normalmente em ambos os casos
+
+```javascript
+fetchJsonGz('../data/gz/receita.json.gz')
+  .catch(function() { return fetchSupabaseReceita(); })  // fallback automático
+  .then(function(json) { /* processa normalmente */ })
+```
+
+### Tabelas no Supabase
+
+| Tabela | Conteúdo |
+|--------|----------|
+| `receita` | Receita orçamentária — linhas por conta contábil e mês |
+| `despesa` | Despesa orçamentária — linhas por conta contábil e mês |
+| `rcl` | Receita Corrente Líquida — estrutura pré-agregada por ano |
+| `restos_a_pagar` | Restos a pagar — linhas por UG, categoria e GND |
+
+### Secrets adicionais necessários
+
+| Secret | Descrição |
+|--------|-----------|
+| `SUPABASE_URL` | URL do projeto Supabase (ex: `https://xxxx.supabase.co`) |
+| `SUPABASE_KEY` | Chave anon/service do Supabase |
 
 ---
 
@@ -125,6 +161,8 @@ Configure em Settings → Secrets → Actions:
 | `DB_MIN_CONNECTIONS` | Mínimo de conexões no pool |
 | `DB_MAX_CONNECTIONS` | Máximo de conexões no pool |
 | `DB_INCREMENT_CONNECTIONS` | Incremento do pool |
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_KEY` | Chave anon/service do Supabase |
 
 ---
 
