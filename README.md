@@ -133,7 +133,7 @@ Os arquivos `.json.gz` serão gerados em `data/gz/`.
 
 ## GitHub Actions — Runner self-hosted
 
-O workflow `etl.yml` roda no servidor do GDF via runner self-hosted.
+O workflow `etl.yml` roda no servidor do GDF via runner self-hosted instalado em `D:\Actions-runner` na estação de trabalho do James (james.coelho). A suspensão da máquina está desativada (Configurações de Energia) e o runner é iniciado automaticamente via **Agendador de Tarefas do Windows** a cada inicialização.
 
 ### Registrar o runner
 
@@ -147,6 +147,30 @@ O workflow `etl.yml` roda no servidor do GDF via runner self-hosted.
    ```cmd
    .\run.cmd
    ```
+
+### Iniciar automaticamente com o Windows (Agendador de Tarefas)
+
+Caso o runner não esteja configurado como serviço, use o Agendador de Tarefas para iniciá-lo automaticamente. Execute no **PowerShell ISE como administrador**:
+
+```powershell
+$action   = New-ScheduledTaskAction -Execute "D:\Actions-runner\run.cmd"
+$trigger  = New-ScheduledTaskTrigger -AtStartup
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+Register-ScheduledTask -TaskName "GitHubActionsRunner" -Action $action -Trigger $trigger -Settings $settings -Principal $principal
+```
+
+Para iniciar imediatamente sem reiniciar:
+
+```powershell
+Start-ScheduledTask -TaskName "GitHubActionsRunner"
+```
+
+Para verificar o status:
+
+```powershell
+Get-ScheduledTask -TaskName "GitHubActionsRunner" | Select-Object State
+```
 
 ### Secrets necessários no repositório
 
