@@ -773,7 +773,7 @@ function init(json) {
   document.body.appendChild(ov);
 
   function fetchJsonGz(url) {
-    return fetch(url, { cache: "no-cache" }).then(function(r) {
+    return fetch(url).then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       var ds = new DecompressionStream('gzip');
       return new Response(r.body.pipeThrough(ds)).text();
