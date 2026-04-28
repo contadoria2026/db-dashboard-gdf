@@ -680,7 +680,7 @@ let REGISTROS = [];
     });
   }
 
-  fetchJsonGz('../data/gz/despesa.json.gz')
+  fetchJsonGz('../data/gz/despesa.json.gz?v=' + new Date().toISOString().slice(0,10))
     .catch(function() { return fetchSupabaseDespesa(); })
     .then(function (json) {
       // Converter campos numericos para string (formato original)
@@ -1623,36 +1623,4 @@ function gerarPDF() {
     const mesTexto   = mesSel.options[mesSel.selectedIndex].textContent;
     const ugTexto    = ugSel.value ? ugSel.options[ugSel.selectedIndex].textContent : 'Todas';
     const fonteTexto = fonteSel.value ? fonteSel.options[fonteSel.selectedIndex].textContent : 'Todas';
-    const gndEl      = document.getElementById('fGND');
-    const gndTexto   = gndEl.value ? gndEl.options[gndEl.selectedIndex].textContent : 'Todos';
-    const despEl     = document.getElementById('fDesp');
-    const despTexto  = despEl.value ? despEl.options[despEl.selectedIndex].textContent : 'Todas';
-    const funcEl     = document.getElementById('fFuncao');
-    const funcTexto  = funcEl.value ? funcEl.options[funcEl.selectedIndex].textContent : 'Todas';
-    const subfEl     = document.getElementById('fSubfuncao');
-    const subfTexto  = subfEl.value ? subfEl.options[subfEl.selectedIndex].textContent : 'Todas';
-    const intraTexto = intraVal === 'somente' ? 'Somente Intra' : intraVal === 'excluir' ? 'Excluir Intra' : 'Todas';
-    const catEconTexto = catEconVal === 'corrente' ? 'Corrente' : catEconVal === 'capital' ? 'Capital' : 'Todas';
-
-    document.getElementById('printResumo').innerHTML = `<strong>Filtros aplicados:</strong> `
-        + `Mês: <strong>${mesTexto}</strong> | `
-        + `UG: <strong>${ugTexto}</strong> | `
-        + `Fonte: <strong>${fonteTexto}</strong> | `
-        + (supVal ? `Superávit: <strong>Sim</strong> | ` : '')
-        + `Intra: <strong>${intraTexto}</strong> | `
-        + `Cat. Econômica: <strong>${catEconTexto}</strong> | `
-        + `GND: <strong>${gndTexto}</strong> | `
-        + `Despesa: <strong>${despTexto}</strong> | `
-        + `Função: <strong>${funcTexto}</strong> | `
-        + `Subfunção: <strong>${subfTexto}</strong> | `
-        + `Exercício: <strong>${ANO_ATUAL}</strong>`;
-
-    window.print();
-}
-
-// Inicializar
-aplicarFiltros();
-
-</script>
-</body>
-</html>
+    const gndEl      = document.ge

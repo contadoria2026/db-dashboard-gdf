@@ -618,7 +618,7 @@ let PREVISAO  = [];
     });
   }
 
-  fetchJsonGz('../data/gz/receita.json.gz')
+  fetchJsonGz('../data/gz/receita.json.gz?v=' + new Date().toISOString().slice(0,10))
     .catch(function() { return fetchSupabaseReceita(); })
     .then(function (json) {
       json.dados.forEach(function (r) {
@@ -1511,34 +1511,4 @@ function gerarPDF() {
     const fonteSel = document.getElementById('fFonte');
     const espSel   = document.getElementById('fEspecie');
     const chkTipo  = document.getElementById('chkTipo').checked;
-    const intraVal = document.querySelector('input[name="rIntra"]:checked').value;
-    const catEconVal = document.querySelector('input[name="rCatEcon"]:checked').value;
-
-    const mesTexto   = mesSel.options[mesSel.selectedIndex].textContent;
-    const ugTexto    = ugSel.value ? ugSel.options[ugSel.selectedIndex].textContent : 'Todas';
-    const fonteTexto = fonteSel.value ? fonteSel.options[fonteSel.selectedIndex].textContent : 'Todas';
-    const espTexto   = espSel.value ? espSel.options[espSel.selectedIndex].textContent : 'Todas';
-    const intraTexto = intraVal === 'somente' ? 'Somente Intra' : intraVal === 'excluir' ? 'Excluir Intra' : 'Todas';
-    const catEconTexto = catEconVal === 'corrente' ? 'Corrente' : catEconVal === 'capital' ? 'Capital' : 'Todas';
-    const detTexto = chkTipo ? 'Tipo' : 'Não';
-
-    const resumo = document.getElementById('printResumo');
-    resumo.innerHTML = `<strong>Filtros aplicados:</strong> `
-        + `Mês: <strong>${mesTexto}</strong> | `
-        + `UG: <strong>${ugTexto}</strong> | `
-        + `Fonte: <strong>${fonteTexto}</strong> | `
-        + `Intra: <strong>${intraTexto}</strong> | `
-        + `Cat. Econômica: <strong>${catEconTexto}</strong> | `
-        + `Espécie: <strong>${espTexto}</strong> | `
-        + `Detalhamento: <strong>${detTexto}</strong> | `
-        + `Comparação: <strong>${ANO_ATUAL} vs ${ANO_ANTERIOR}</strong>`;
-
-    // Abrir diálogo de impressão (o usuário salva como PDF)
-    window.print();
-}
-
-// Inicializar
-aplicarFiltros();
-</script>
-</body>
-</ht
+    const intraVal = document.querySelector('input[n
